@@ -95,7 +95,7 @@ def rewrite_ir(code: list[IrStep]) -> list[IrStep]:
         if op == "move" and len(args["dst"]) == 0:
             if not args["src"].isdigit():
                 op = "clear"
-                args = {"dst": args["src"]}
+                args = {"dst": [args["src"]]}
 
         # if op == "move" and i + 1 < len(code) and next.op == "move":
         #     pass
