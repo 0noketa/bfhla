@@ -1,0 +1,86 @@
+
+from typing import Tuple
+
+# every list[tuple[str, int]] means BF-RLE in list of tuple form
+
+# macro instructions:
+#   0: "[-]"
+#   ptrmul: on clean mem, "[[" + ">"*n + "+" "<"*n "-]" + ">"*n "-]"
+#   skipr: "[" + ">"*n + "]"
+#   skipl: "[" + "<"*n + "]"
+#   putsr: "[." + ">"*n + "]"
+#   putsl: "[." + "<"*n + "]"
+
+
+def check_balanced_span(src: list[tuple[str, int]], start: int) -> Tuple[bool, int]:
+    """result: (is_balanced, next to ']')"""
+    addr = 0
+    i = start
+
+    while i < len(src):
+        op, arg = src[i]
+        if op == ">":
+            addr += arg
+        elif op == "<":
+            addr -= arg
+        elif op == "[":
+            is_balanced, j = check_balanced_span(src, i + 1)
+            if not is_balanced:
+                break
+            i = j
+            continue
+        elif op == "]":
+            i += 1
+            break
+
+        i += 1
+
+    return (addr == 0), i
+
+def is_balanced_loop(src: list[Tuple[str, int]], start: int) -> bool:
+    if len(src) <= start + 1 or src[start][0] != "[":
+        return False
+
+    is_balanced, i = check_balanced_span(src, start + 1)
+
+    return is_balanced # and i < len(src) and src[i].op == "]"
+
+
+def calc_move(src: list[Tuple[str, int]], start: int, base_addr: int = 0, memory: list[int] = None) -> Tuple[bool, int, list[int], int]:
+    """result: (is_move, base_addr in memory_map, mempry_map, next)"""
+    if not is_balanced_loop(src, start):
+        return False, 0, [], 0
+
+    _, end = check_balanced_span(src, start + 1)
+
+    if memory is None:
+        memory = [0]
+
+    addr = base_addr
+    for i in range(start + 1, end):
+        op, arg = src[i]
+        if op == ">":
+            addr += arg
+            if addr >= len(memory):
+                memory.extend([0] * (addr - len(memory) + 1))
+        elif op == "<":
+            addr -= arg
+            if addr < 0:
+                base_addr -= addr
+                memory = [0] * (-addr) + memory
+                addr = 0
+        elif op == "+":
+            memory[addr] += arg
+        elif op == "-":
+            memory[addr] -= arg
+        elif op in ["[", ",", ".", "0"]:
+            return False, 0, [], 0
+        elif op == "]":
+            i += 1
+            break
+
+    return (memory[base_addr] == -1), addr, memory, i
+
+def is_move(src: list[Tuple[str, int]], start: int) -> bool:
+    comd, _, _, _ = calc_move(src, start)
+    return comd

@@ -1,13 +1,64 @@
-config default_type uint
-scope global x, y, _: [2], z
+# "()", "[]" and "{}" are treated as the same. only balancing is cared.
+# "[a + (b + {c + d})]": ok, "[a + (b + {c + d)))": error
+
+# "config" changes compiler behavior at first-pass (depends on definition order)
+config default_type = uint  # uint: cell value, ulong: 2 cells value, byte: cell value on bf8 and error_type on bf16.
+config default_array_type = raw_array  # raw_array: memory span without any additional element, slow_array: slow_mem in tobf.
+
+# scope_head = scope_name (|"[" const_expr "]") (|"@" (qname | integer | "?") (|"+" const_expr))
+# "scope" with "[]" defines size of scope
+scope global[4] = x, y
+# "scope" with "@" selects address of scope
+# if "?" was passed, treats the scope as placed on unknown address.
+# scope.__NEXT__ == scope + si:zeof(scope)
+scope scope2 @ global.__NEXT__ + 1 = _: [2], z
+# current memory layout: global.x, global.y, global[2], global[3],  _, scope2._[0], scope2._[1], scope2.z
+
+# changes base address.
+# if no address was passed, uses current address.
+# if passed address is base address of no scope, all scope become to invisible.
+# if "?" was passed, uses current address as unknown base address. and all scope becomes to invisible.
+# if scope with unknown address was passed,
+#   only scopes with relative address to selected scope become to visible
+#   and all scopes with fixed address become to invisible.
+# "base" (| base_address | scope_name | "?")
 base global
 
+# changes offset address. it affects to inline bf. 
+# "at" (| offset_address | variable_name)
+at 0
+
+# bfhla's inline bf is BF-RLE(base10 suffix) + bfhla constant expression ("{...}") as RLE-length and selector
+bf ">5"
+
+# notice of current offset address. it recovers from confusion of unknown (but statically obvious) address made by inline bf. 
+# "offset" (| offset_address | variable_name)
+offset 5
+at 0  # <<<<<
+
+# initializes if variables require initialization.
+# if scope name was selected, all variables on the scope will be initialized.
+init global, scope2
+
+# "expects" forces compiler to regard passed expressing as true
+expects __BASE__ == 0
+expects x == 0
+expects y == 0
+expects z == 0
+
 input x
-config assign_method move
-z+ = x
-x+, y+ = z
+config assign_method = move
+# syntax sugar. "dst ... = src" == "assign_method dst ... = src"
+# destination annotation(suffix). "+": "+=" in C, "-": "-=" in C
+move z+ = x
+x+, y = z  # x += z; y = z; z = 0 if assign_method == move;
 x+, y+ = 2
 x+ = 1
-
+y = 65
 print x, y
+
 print "hello, \"w o r l d\"!"
+
+# cleanups if variables require cleanup.
+clean global, scope2
+

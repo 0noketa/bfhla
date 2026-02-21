@@ -1,129 +1,189 @@
 
-from typing import Generator, Tuple
+from typing import Tuple
+import bf_analyser
+from bfhla_config import *
+from bfhla_struct import *
+import bfhla_analyser
 
 # least version without any scope-inference
-
-INDENT_UNIT = "    "
-BUF_SIZE = 32767
-NAMED_VARS = ["x", "y", "z"]
+# current version disassembles only codes with balanced loops and static addressing
 
 
-def var_name(addr: int) -> str:
-    if addr < len(NAMED_VARS):
-        return NAMED_VARS[addr]
+# currently, semantic analyser can detect blocks in the form of:
+# balanced_loop_at: every "[]" that keeps current address.
+# for_range0: inside block, last 0 is visible. balanced loop in the form of "[- code]".
+# for_range1: inside block, first value is visible. balanced loop in the form of "[code -]".
+# ifnz: balanced loop in the form of "[code [-]]".
+# # ifnz0: balanced loop in the form of "[[-] code]".
+# # ifneq: balanced loop in the form of "-n [code [-]]".
 
-    return f"global[{addr}]"
 
-def selector(addr0: int, addr1: int):
-    if addr0 < 0 or addr1 < 0:
+def bfrle(cmd, n) -> str:
+    if n == 0:
         return ""
-    elif addr0 < addr1:
-        return f" >{addr1 - addr0}"
-    elif addr0 > addr1:
-        return f" <{addr0 - addr1}"
+
+    if NO_BFRLE:
+        return cmd * n
+
+    return cmd + (f"{n}" if n > 1 else "")
+
+def selector(from_: int, to_: int):
+    n = abs(to_ - from_)
+    if from_ < 0 or to_ < 0:
+        return ""
+    elif from_ < to_:
+        return bfrle(">", n)
+    elif from_ > to_:
+        return bfrle("<", n)
     else:
         return ""
 
-def check_balanced_span(src: list, start: int) -> Tuple[bool, int]:
-    addr = 0
-    i = start
 
-    while i < len(src):
-        op, arg = src[i]
-        if op == ">":
-            addr += arg
-        elif op == "<":
-            addr -= arg
-        elif op == "[":
-            is_balanced, j = check_balanced_span(src, i + 1)
-            if not is_balanced:
-                return False, 0
-            i = j
-            continue
-        elif op == "]":
-            i += 1
-            break
+def print_indented(i: int, s: str) -> str:
+    print(INDENT_UNIT * i + s)
 
-        i += 1
 
-    return (addr == 0), i
+def print_ir(code: list[IrStep]):
+    blks = 0
 
-def print_indented(blks: list[int], s: str) -> str:
-    print(INDENT_UNIT * (len(blks) - 1) + s)
+    for step in code:
+        op, args = step.get_pair()
+        if op == "scope":
+            print_indented(blks, f"scope {args['name']}[{args['size']}] = {', '.join(args['vars'])}")
+        elif op == "config":
+            print_indented(blks, f"config {args['name']} = {args['value']}")
+        elif op == "move":
+            dst = ", ".join(args["dst"])
+            prefix = "move " if EXPLICIT_MOVE else ""
+            print_indented(blks, f"{prefix}{dst} = {args['src']}")
+        elif op == "copy":
+            dst = ", ".join(args["dst"])
+            print_indented(blks, f"copy {dst} = {args['src']}")
+        elif op == "clear":
+            dst = ", ".join(args["dst"])
+            print_indented(blks, f"clear {dst}")
+        elif op == "input":
+            dst = ", ".join(args["dst"])
+            print_indented(blks, f"input {dst}")
+        elif op == "print":
+            src = ", ".join(args["src"])
+            print_indented(blks, f"print {src}")
+        elif op == "bf":
+            print_indented(blks, f"bf {args['code']}")
+        elif op == "balanced_loop_at":
+            print_indented(blks, f"balanced_loop_at {args['addr']}")
+            blks += 1
+        elif op == "ifnz":
+            print_indented(blks, f"ifnz {args['addr']}")
+            blks += 1
+        elif op == "for_range0":
+            print_indented(blks, f"for_range0 {args['addr']}")
+            blks += 1
+        elif op == "for_range1":
+            print_indented(blks, f"for_range1 {args['addr']}")
+            blks += 1
+        elif op == "end":
+            blks -= 1
+            print_indented(blks, "end")
+        elif op == "comment":
+            print_indented(blks, args["text"])
+        elif op == "error":
+            print_indented(blks, f"error {args['src']}")
+        else:
+            print_indented(blks, f"# unknown instruction: {op}")
 
-def disasm(src):
+
+
+def disasm(src: list[tuple[str, int]]) -> list[IrStep]:
     addr = 0
     blks = [0]
+    dst = []
 
-    print(f"scope global[{BUF_SIZE}] = x, y, z")
+    dst.append(IrStep("config", {"name": "assign_method", "value": "move"}))
+    dst.append(IrStep("scope", {"name": GLOBAL_SCOPE_NAME, "size": BUF_SIZE, "vars": NAMED_VARS}))
 
     i = 0
     while i < len(src):
         op, arg = src[i]
+        ins = IrStep("error", {"src": f"{op}"})
 
         if op in ["+", "-"]:
             if addr == -1:
-                print_indented(blks, f"bf {op}{arg}")
+                ins = IrStep("bf", {"code": bfrle(op, arg)})
             else:
-                print_indented(blks, f"move {var_name(addr)}{op} = {arg}")
+                ins = IrStep("move", {"dst": [var_name(addr) + op], "src": str(arg)})
         elif op == "0":
             if addr == -1:
-                print_indented(blks, f"bf [-]")
+                ins = IrStep("bf", {"code": "[-]"})
             elif len(src) > i + 1 and src[i + 1][0] == "+":
-                print_indented(blks, f"move {var_name(addr)} = {src[i + 1][1]}")
+                ins = IrStep("move", {"dst": [var_name(addr)], "src": f"{src[i + 1][1]}"})
                 i += 1
             else:
-                print_indented(blks, f"move {var_name(addr)} = 0")
+                ins = IrStep("clear", {"dst": [var_name(addr)]})
         elif op == ">":
             if addr == -1:
-                print_indented(blks, f"bf >{arg}")
+                ins = IrStep("bf", {"code": bfrle(">", arg)})
             else:
-                addr += 1
+                addr += arg
+                i += 1
+                continue
         elif op == "<":
             if addr == -1:
-                print_indented(blks, f"bf <{arg}")
+                ins = IrStep("bf", {"code": bfrle("<", arg)})
             else:
-                addr -= 1
+                addr -= arg
+                i += 1
+                continue
         elif op == ",":
             if addr == -1:
-                print_indented(blks, f"bf ,")
+                ins = IrStep("bf", {"code": ","})
             else:
-                print_indented(blks, f"input {var_name(addr)}")
+                ins = IrStep("input", {"dst": [f"{var_name(addr)}"]})
         elif op == ".":
             if addr == -1:
-                print_indented(blks, f"bf .")
+                ins = IrStep("bf", {"code": "."})
             else:
-                print_indented(blks, f"print {var_name(addr)}")
+                ins = IrStep("print", {"src": [f"{var_name(addr)}"]})
         elif op == "[":
-            is_balanced, _ = check_balanced_span(src, i + 1)
-            if is_balanced and addr != -1:
-                print_indented(blks, f"balanced_loop_at {var_name(addr)}")
+            if addr != -1 and bf_analyser.is_move(src, i):
+                _, base_addr, memory, i = bf_analyser.calc_move(src, i)
+                ins = bfhla_analyser.decode_move(addr, base_addr, memory)
+                dst.append(ins)
+                continue
+            elif addr != -1 and bf_analyser.is_balanced_loop(src, i):
+                ins = IrStep("balanced_loop_at", {"addr": var_name(addr)})
                 blks.append(addr)
             else:
-                print_indented(blks, f"bf {selector(blks[-1], addr)} [")
+                ins = IrStep("bf", {"code": f"{selector(blks[-1], addr)}["})
                 addr = -1
         elif op == "]":
-
             if addr == -1:
-                print_indented(blks, f"bf ]")
+                ins = IrStep("bf", {"code": "]"})
             elif len(blks) <= 1:
-                print_indented(blks, f"# error at {i}: unmatched ']'")
+                ins = IrStep("comment", {"text": f" error at {i}: unmatched ']'"})
+                dst.append(ins)
                 return
             else:
                 addr2 = blks.pop()
                 if addr != addr2:
-                    print_indented(blks, f"error at {i}: unbalanced '[]', any internal error")
+                    ins = IrStep("comment", {"text": f" error at {i}: unbalanced '[]', any internal error"})
                     addr = -1
                 else:
-                    print_indented(blks, f"end")
+                    ins = IrStep("end", {})
+        else:
+            i += 1
+            continue
 
+        dst.append(ins)
         i += 1
+
+    return dst
 
 def load():
     try:
         while True:
             line = input().strip()
-            print(f"# {line}")
+            # print(f"# {line}")
 
             while line:
                 c = line[0]
@@ -141,7 +201,11 @@ def load():
                     yield (c, 0)
     except EOFError:
         pass
-    
+
 
 if __name__ == "__main__":
-    disasm([*load()])
+    ir = disasm([*load()])
+    ir = bfhla_analyser.merge_inline_bf(ir)
+    if not NO_SEMANTIC_ANALYSER:
+        ir = bfhla_analyser.rewrite_ir(ir)
+    print_ir(ir)
