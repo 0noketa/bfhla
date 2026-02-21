@@ -11,9 +11,32 @@ from typing import Tuple
 #   putsr: "[." + ">"*n + "]"
 #   putsl: "[." + "<"*n + "]"
 
+def check_skip(src: list[tuple[str, int]], start: int) -> Tuple[bool, int, int]:
+    addr = 0
+    start += 1
+
+    for i, (op, arg) in enumerate(src[start:], start):
+        if op == ">":
+            addr += arg
+        elif op == "<":
+            addr -= arg
+        elif op == "]":
+            return True, addr, i + 1
+        else:
+            break
+
+    return False, 0, start
+
+def is_skip(src: list[Tuple[str, int]], start: int) -> bool:
+    if len(src) <= start + 2 or src[start][0] != "[":
+        return False
+
+    cond, n, i = check_skip(src, start)
+    return cond
+
 
 def check_balanced_span(src: list[tuple[str, int]], start: int) -> Tuple[bool, int]:
-    """result: (is_balanced, next to ']')"""
+    """result: (is_balanced, next to last step of span)"""
     addr = 0
     i = start
 
@@ -24,26 +47,33 @@ def check_balanced_span(src: list[tuple[str, int]], start: int) -> Tuple[bool, i
         elif op == "<":
             addr -= arg
         elif op == "[":
-            is_balanced, j = check_balanced_span(src, i + 1)
-            if not is_balanced:
+            balanced, j = check_balanced_loop(src, i)
+            if not balanced:
                 break
+
             i = j
             continue
         elif op == "]":
-            i += 1
             break
 
         i += 1
 
     return (addr == 0), i
 
+def check_balanced_loop(src: list[tuple[str, int]], start: int) -> Tuple[bool, int]:
+    """result: (is_balanced, next to ']')"""
+    if len(src) <= start + 1 or src[start][0] != "[":
+        return False, start
+
+    cond, i = check_balanced_span(src, start + 1)
+    return cond and i < len(src) and src[i][0] == "]", i + 1
+
 def is_balanced_loop(src: list[Tuple[str, int]], start: int) -> bool:
     if len(src) <= start + 1 or src[start][0] != "[":
         return False
 
-    is_balanced, i = check_balanced_span(src, start + 1)
-
-    return is_balanced # and i < len(src) and src[i].op == "]"
+    cond, i = check_balanced_loop(src, start)
+    return cond
 
 
 def calc_move(src: list[Tuple[str, int]], start: int, base_addr: int = 0, memory: list[int] = None) -> Tuple[bool, int, list[int], int]:
@@ -51,7 +81,7 @@ def calc_move(src: list[Tuple[str, int]], start: int, base_addr: int = 0, memory
     if not is_balanced_loop(src, start):
         return False, 0, [], 0
 
-    _, end = check_balanced_span(src, start + 1)
+    _, end = check_balanced_loop(src, start)
 
     if memory is None:
         memory = [0]

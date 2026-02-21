@@ -152,15 +152,28 @@ def merge_inline_bf(code: list[IrStep]) -> list[IrStep]:
 
 
 def decode_move(addr: int, base_addr: int, memory: list[int]) -> IrStep:
+    """base_addr: pointer index on memory map"""
     dst = []
+    if addr == -1:
+        addr = 0
+        fixed_addr = False
+    else:
+        fixed_addr = True
+
     for i in range(len(memory)):
-        var_addr = addr + (i - base_addr)
+        rel_addr = (i - base_addr)
+        var_addr = addr + rel_addr
 
         if i != base_addr:
             if memory[i] != 0 and KEEP_ALL_MOVE_DST:
-                s = f"{var_name(var_addr)}" + ("+" if memory[i] >= 0 else "-")
+                s = var_name(var_addr) if fixed_addr else f"$[{var_addr}]"
+                s += ("+" if memory[i] >= 0 else "-")
                 if abs(memory[i]) != 1:
                         s += f"{abs(memory[i])}"
                 dst.append(s)
 
-    return IrStep("move", {"dst": dst, "src": var_name(addr)})
+    if fixed_addr:
+        src = var_name(addr)
+    else:
+        src = "$[0]"
+    return IrStep("move", {"dst": dst, "src": src})

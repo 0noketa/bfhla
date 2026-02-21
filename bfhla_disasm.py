@@ -50,6 +50,8 @@ def print_ir(code: list[IrStep]):
         op, args = step.get_pair()
         if op == "scope":
             print_indented(blks, f"scope {args['name']}[{args['size']}] = {', '.join(args['vars'])}")
+        elif op == "offset":
+            print_indented(blks, f"offset {args['addr']}")
         elif op == "config":
             print_indented(blks, f"config {args['name']} = {args['value']}")
         elif op == "move":
@@ -68,10 +70,17 @@ def print_ir(code: list[IrStep]):
         elif op == "print":
             src = ", ".join(args["src"])
             print_indented(blks, f"print {src}")
+        elif op == "skipr":
+            print_indented(blks, f"skipr {args['count']}")
+        elif op == "skipl":
+            print_indented(blks, f"skipl {args['count']}")
         elif op == "bf":
             print_indented(blks, f"bf {args['code']}")
         elif op == "balanced_loop_at":
             print_indented(blks, f"balanced_loop_at {args['addr']}")
+            blks += 1
+        elif op == "balanced_loop":
+            print_indented(blks, f"balanced_loop")
             blks += 1
         elif op == "ifnz":
             print_indented(blks, f"ifnz {args['addr']}")
@@ -81,6 +90,9 @@ def print_ir(code: list[IrStep]):
             blks += 1
         elif op == "for_range1":
             print_indented(blks, f"for_range1 {args['addr']}")
+            blks += 1
+        elif op == "loop":
+            print_indented(blks, "loop")
             blks += 1
         elif op == "end":
             blks -= 1
@@ -145,20 +157,32 @@ def disasm(src: list[tuple[str, int]]) -> list[IrStep]:
             else:
                 ins = IrStep("print", {"src": [f"{var_name(addr)}"]})
         elif op == "[":
-            if addr != -1 and bf_analyser.is_move(src, i):
+            if bf_analyser.is_skip(src, i):
+                _, n, i = bf_analyser.check_skip(src, i)
+                ins = IrStep(("skipr" if n > 0 else "skipl"), {"count": abs(n)})
+                dst.append(ins)
+                addr = -1
+                continue
+            elif bf_analyser.is_move(src, i):
                 _, base_addr, memory, i = bf_analyser.calc_move(src, i)
                 ins = bfhla_analyser.decode_move(addr, base_addr, memory)
                 dst.append(ins)
                 continue
-            elif addr != -1 and bf_analyser.is_balanced_loop(src, i):
-                ins = IrStep("balanced_loop_at", {"addr": var_name(addr)})
+            elif bf_analyser.is_balanced_loop(src, i):
+                if addr != -1:
+                    ins = IrStep("balanced_loop_at", {"addr": var_name(addr)})
+                else:
+                    ins = IrStep("balanced_loop", {})
                 blks.append(addr)
             else:
-                ins = IrStep("bf", {"code": f"{selector(blks[-1], addr)}["})
+                if addr != -1:
+                    ins = IrStep("offset", {"addr": var_name(addr)})
+                    dst.append(ins)
+                ins = IrStep("loop", {})
                 addr = -1
         elif op == "]":
             if addr == -1:
-                ins = IrStep("bf", {"code": "]"})
+                ins = IrStep("end", {})
             elif len(blks) <= 1:
                 ins = IrStep("comment", {"text": f" error at {i}: unmatched ']'"})
                 dst.append(ins)
