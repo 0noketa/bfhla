@@ -1,6 +1,9 @@
 from typing import Union
 import sys
 import re
+from bfhla_config import *
+from bfhla_struct import *
+
 
 lex = re.compile("""\\s*(
     "(?:[^"]|\\")*"
@@ -35,14 +38,8 @@ class Node:
             return -1
     def __repr__(self):
         return f"{self.op}({','.join(map(repr, self.args))})"
-class CmdTemplate:
-    def __init__(self, op_: str, args_: list):
-        self.op = op_
-        self.args = args_
-    def __repr__(self):
-        return f"CmdTemplate({self.op}, [{','.join(map(repr, self.args))}])"
 class ScopeTemplate:
-    def __init__(self, name_: str, size_: Node, base_: Node, offset_: Node, vars_: list[Node]):
+    def __init__(self, name_: str, size_: Node, base_: Node, offset_: Node, vars_: list[VarDecl]):
         self.name = name_
         self.size = size_
         self.base = base_
@@ -50,6 +47,8 @@ class ScopeTemplate:
         self.vars = vars_
     def is_relative(self):
         return not self.base.is_num()
+    def var_names(self):
+        return [i.name for i in self.vars]
     def __repr__(self):
         return f"ScopeTemplate('{self.name}', {self.size}, {self.base}, {self.offset}, [{','.join(map(repr, self.vars))}])"
 class Scope:
@@ -122,51 +121,77 @@ config = {
 }
 
 
-def parse_line(tkns: tuple[Union[str, tuple]]) -> CmdTemplate:
+def parse_line(tkns: tuple[Union[str, tuple]]) -> IrStep:
     global current_base
 
     if tkns[0] == "config":
         if "=" not in tkns:
-            cmd = CmdTemplate("error", [tkns])
+            cmd = IrStep("error", {"src": tkns})
         else:
             i = tkns.index("=")
             key = tkns[1]
             value = tkns[i + 1]
             config[key] = value
-            cmd = CmdTemplate("config", [key, value])
+            cmd = IrStep("config", ConfigArgs(name=key, value=value))
     elif tkns[0] == "scope":
         scope = parse_scope(tkns[1:])
-        cmd = CmdTemplate("scope", [scope])
-    elif tkns[0] == "base":
-        args = parse_args(tkns[1:])
-        cmd = CmdTemplate("base", [args])
+        cmd = IrStep("scope", ScopeDeclArgs(
+            scope.name,
+            scope.size,
+            scope.base,
+            scope.offset,
+            # currently types are ignored
+            scope.var_names()
+        ))
     elif tkns[0] == "at":
         args = parse_const_expr(tkns[1:])
-        cmd = CmdTemplate("at", [args])
-    elif tkns[0] == "offset":
-        args = parse_const_expr(tkns[1:])
-        cmd = CmdTemplate("offset", [args])
+        cmd = IrStep("at", AddrSelectorArgs([args]))
     elif tkns[0] == "bf":
         args = parse_const_expr(tkns[1:])
-        cmd = CmdTemplate("bf", [args])
+        cmd = IrStep("bf", RawArgs({"code": args}))
     elif tkns[0] == "bf_at":
         args = parse_const_expr(tkns[1:])
-        cmd = CmdTemplate("bf_at", [args])
+        cmd = IrStep("bf_at", RawArgs({"code": args}))
     elif tkns[0] == "expects":
         args = parse_const_expr(tkns[1:])
-        cmd = CmdTemplate("expects", [args])
+        cmd = IrStep("expects", RawArgs({"code": args}))
+    elif tkns[0] == "ifnz":
+        args = parse_const_expr(tkns[1:])
+        cmd = IrStep("ifnz", AddrSelectorArgs([args]))
+    elif tkns[0] == "for_range0":
+        args = parse_const_expr(tkns[1:])
+        cmd = IrStep("for_range0", AddrSelectorArgs([args]))
+    elif tkns[0] == "for_range1":
+        args = parse_const_expr(tkns[1:])
+        cmd = IrStep("for_range1", AddrSelectorArgs([args]))
+    elif tkns[0] == "balanced_loop_at":
+        args = parse_const_expr(tkns[1:])
+        cmd = IrStep("balanced_loop_at", AddrSelectorArgs([args]))
+    elif tkns[0] == "balanced_loop":
+        args = parse_const_expr(tkns[1:])
+        cmd = IrStep("balanced_loop", RawArgs({}))
+    elif tkns[0] == "loop":
+        args = parse_const_expr(tkns[1:])
+        cmd = IrStep("loop", RawArgs({}))
+    elif tkns[0] == "end":
+        args = parse_const_expr(tkns[1:])
+        cmd = IrStep("end", RawArgs({}))
     elif tkns[0] == "init":
         args = parse_names(tkns[1:])
-        cmd = CmdTemplate("init", args)
+        cmd = IrStep("init", args)
     elif tkns[0] == "clean":
         args = parse_names(tkns[1:])
-        cmd = CmdTemplate("clean", args)
+        cmd = IrStep("clean", args)
+    elif tkns[0] == "clear":
+        args = parse_names(tkns[1:])
+        cmd = IrStep("clear", AddrSelectorArgs(args))
     elif tkns[0] in ["input", "print"]:
         args = parse_args(tkns[1:])
-        cmd = CmdTemplate(tkns[0], [args])
+        cmd = IrStep(tkns[0], AddrSelectorArgs(args))
     elif tkns[0] in ["copy", "move"]:
-        args = parse_assign(tkns[1:], assign_method=tkns[0], is_move_args=True)
-        cmd = CmdTemplate(tkns[0], [args])
+        # args = parse_assign(tkns[1:], assign_method=tkns[0], is_move_args=True)
+        # cmd = IrStep(tkns[0], AssignArgs(args.args.dst, args.args.src))
+        cmd = parse_assign(tkns[1:], assign_method=tkns[0], is_move_args=True)
     else:
         cmd = parse_assign(tkns)
 
@@ -206,7 +231,7 @@ def parse_scope(tkns: tuple[Union[str, tuple]]) -> ScopeTemplate:
         body = parse_var_decls(tkns[1:])
         return ScopeTemplate(name, size, base, offset, body)
 
-def parse_assign(tkns: tuple[Union[str, tuple]], assign_method:str=None, is_move_args: bool = False) -> CmdTemplate:
+def parse_assign(tkns: tuple[Union[str, tuple]], assign_method:str=None, is_move_args: bool = False) -> IrStep:
     if assign_method is None:
         assign_method = config["assign_method"]
 
@@ -214,19 +239,19 @@ def parse_assign(tkns: tuple[Union[str, tuple]], assign_method:str=None, is_move
         i = tkns.index("=")
         src = parse_val(tkns[i+1:])
         dsts = parse_dsts(tkns[:i])
-        return CmdTemplate(assign_method, [src, dsts])
+        return IrStep(assign_method, AssignArgs(dsts, src))
     elif "->" in tkns:
         i = tkns.index("->")
         src = parse_val(tkns[:i])
         dsts = parse_dsts(tkns[i+1:])
-        return CmdTemplate(assign_method, [src, dsts])
+        return IrStep(assign_method, AssignArgs(dsts, src))
     elif is_move_args:
         args = parse_legacy_assign_args(tkns)
         src = parse_val(args[:1])
         dsts = parse_dsts(args[1:])
-        return CmdTemplate(assign_method, [src, dsts])
+        return IrStep(assign_method, AssignArgs(dsts, src))
 
-    return CmdTemplate("error", [tkns])
+    return IrStep("error", RawArgs({"src": tkns}))
 
 def parse_legacy_assign_args(tkns: tuple[Union[str, tuple]]) -> list[Node]:
     args = []
@@ -261,7 +286,7 @@ def parse_names(tkns: tuple[Union[str, tuple]]) -> tuple[Node]:
     name = parse_const_qualified(tkns)
     args.append(name)
     return tuple(args)
-def parse_dsts(tkns: tuple[Union[str, tuple]]) -> list[Node]:
+def parse_dsts(tkns: tuple[Union[str, tuple]]) -> list[LValue]:
     args = []
     while "," in tkns:
         i = tkns.index(",")
@@ -274,11 +299,15 @@ def parse_dsts(tkns: tuple[Union[str, tuple]]) -> list[Node]:
 
     return args
 
-def parse_lval(tkns: tuple[Union[str, tuple]]) -> Node:
-    if len(tkns) > 1:
-        if tkns[-1] in ["+", "-"]:
-            return Node("annotated", [tkns[-1], parse_val(tkns[:-1])])
-    return parse_val(tkns)
+def parse_lval(tkns: tuple[Union[str, tuple]]) -> LValue:
+    if len(tkns) > 1 and tkns[-1] in ["+", "-"]:
+        sign = 1 if tkns[-1] == "+" else -1
+        return LValue(tkns[:-1], multiplier=sign)
+    if len(tkns) > 2 and tkns[-2] in ["+", "-"]:
+        sign = 1 if tkns[-2] == "+" else -1
+        sign *= int(tkns[-1])
+        return LValue(tkns[:-2], multiplier=sign)
+    return LValue(tkns)
 def parse_val(tkns: tuple[Union[str, tuple]]) -> Node:
     if len(tkns) == 1:
         if tkns[0].isidentifier():
@@ -306,7 +335,7 @@ def parse_var_decls(tkns: tuple[Union[str, tuple]]) -> list[Node]:
     args.append(arg)
 
     return args
-def parse_var_decl(tkns: tuple[Union[str, tuple]]) -> Node:
+def parse_var_decl(tkns: tuple[Union[str, tuple]]) -> VarDecl:
     if len(tkns) >= 1:
         if tkns[0].isidentifier():
             name = tkns[0]
@@ -314,9 +343,9 @@ def parse_var_decl(tkns: tuple[Union[str, tuple]]) -> Node:
                 typ = parse_type(tkns[2:])
             else:
                 typ = Node("type", [Node("primitive", [config["default_type"]])])
-            return Node("var_decl", [name, typ])
+            return VarDecl(name, typ)
 
-    return Node("error", tkns)
+    return VarDecl("error", tkns)
 
 def find_right_recur_opr(tkns: tuple[Union[str, tuple]], oprs: list[str]) -> tuple[str, int]:
     indices = []
@@ -442,10 +471,15 @@ def parse_type(tkns: tuple[Union[str, tuple]]) -> Node:
 src = sys.stdin.readlines()
 src = Lex.lex_lines(src)
 print(src)
+prog = []
 for line in src:
     print(line)
     cmd = parse_line(line)
     print(cmd)
+    prog.append(cmd)
 
 for scope_name in scopes:
     print(scope_name, scopes[scope_name])
+
+import codegen_bfhla
+codegen_bfhla.print_bfhla(prog)

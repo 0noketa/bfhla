@@ -4,7 +4,17 @@ from bfhla_config import *
 from bfhla_struct import *
 
 
-BLOCK_HERDERS = ["balanced_loop_at", "ifnz", "for_range0", "for_range1"]
+# currently, semantic analyser can detect blocks in the form of:
+#    balanced_loop: every "[]" that keeps current address.
+#    balanced_loop_at: every "[]" that keeps current address. this version is only for visible scopes
+#    for_range0: inside block, last 0 is visible. balanced loop in the form of "[- code]".
+#    for_range1: inside block, first value is visible. balanced loop in the form of "[code -]".
+#    ifnz: balanced loop in the form of "[code [-]]".
+# #    ifnz0: balanced loop in the form of "[[-] code]".
+# #    ifneq: balanced loop in the form of "-n [code [-]]".
+
+
+BLOCK_HERDERS = ["balanced_loop", "balanced_loop_at", "ifnz", "for_range0", "for_range1"]
 
 
 def find_block_end(src: list[IrStep], start: int) -> int:
@@ -25,12 +35,14 @@ def check_ifnz_block(code: list[IrStep], i: int) -> Tuple[bool, int]:
         return False, 0
 
     j = find_block_end(code, i + 1)
-    if (j != -1 and j - 1 >= i
-            and code[j - 1].op == "clear"
-            and len(code[j - 1].args["dst"]) == 1
-            and code[j - 1].args["dst"][0] == code[i].args['addr']
-            ):
-        return True, j
+    if (j != -1 and j - 1 >= i):
+            last_op = code[j - 1].op
+            last_args: AddrSelectorArgs = code[j - 1].args
+            if (last_op == "clear"
+                    and len(last_args.addrs) == 1
+                    and last_args.addrs[0] == code[i].args.addrs[0]
+                    ):
+                return True, j
 
     return False, 0
 def is_ifnz_block(code: list[IrStep], i: int) -> bool:
@@ -41,13 +53,15 @@ def check_forrange0_block(code: list[IrStep], i: int) -> Tuple[bool, int]:
     if len(code) <= i + 1 or code[i].op != "balanced_loop_at":
         return False, 0
 
-    if (i + 1 < len(code)  # ifnz0: balanced loop in the form of "[[-] code]".
-            and code[i + 1].op == "move"
-            and len(code[i + 1].args["dst"]) == 1
-            and code[i + 1].args["src"] == "1"
-            and code[i + 1].args["dst"][0] == f"{code[i].args['addr']}-"
-            ):
-        return True, i + 2
+    if (i + 1 < len(code)):  # ifnz0: balanced loop in the form of "[[-] code]".
+        first_op = code[i + 1].op
+        first_args: AssignArgs = code[i + 1].args
+        if(first_op == "move"
+                and len(first_args.dsts) == 1
+                and first_args.src == "1"
+                and first_args.dsts[0].to_bfhla() == f"{code[i].args.addrs[0]}-"
+                ):
+            return True, i + 2
 
     j = find_block_end(code, i + 1)
     return False, j - 1 if j > i + 1 else j
@@ -60,13 +74,15 @@ def check_forrange1_block(code: list[IrStep], i: int) -> Tuple[bool, int]:
         return False, 0
 
     j = find_block_end(code, i + 1)
-    if (j != -1 and j - 1 >= i
-            and code[j - 1].op == "move"
-            and len(code[j - 1].args["dst"]) == 1
-            and code[j - 1].args["src"] == "1"
-            and code[j - 1].args["dst"][0] == f"{code[i].args['addr']}-"
-            ):
-        return True, j
+    if (j != -1 and j - 1 >= i):
+            last_op = code[j - 1].op
+            last_args: AssignArgs = code[j - 1].args
+            if(last_op == "move"
+                    and len(last_args.dsts) == 1
+                    and last_args.src == "1"
+                    and last_args.dsts[0].to_bfhla() == f"{code[i].args.addrs[0]}-"
+                    ):
+                return True, j
 
     return False, j
 def is_forrange1_block(code: list[IrStep], i: int) -> bool:
@@ -92,21 +108,23 @@ def rewrite_ir(code: list[IrStep]) -> list[IrStep]:
         else:
             next = None
 
-        if op == "move" and len(args["dst"]) == 0:
-            if not args["src"].isdigit():
+        if op == "move" and len(args.dsts) == 0:
+            if not args.src.isdigit():
                 op = "clear"
-                args = {"dst": [args["src"]]}
+                args = AddrSelectorArgs([args.src])
 
         # if op == "move" and i + 1 < len(code) and next.op == "move":
         #     pass
         if op == "clear":
-            expected = [i + "+" for i in args["dst"]]
+            expected = args.to_bfhla() + "+"
+            next_args: AssignArgs = next.args  # cast
+
             if (next is not None and next.op == "move"
-                    and len(next.args["dst"]) == len(expected)
-                    and all(s in next.args["dst"] for s in expected)):
+                    and len(next_args.dsts) == 1
+                    and next_args.dsts[0].to_bfhla() == expected):
 
                 op = "move"
-                args = {"dst": args["dst"], "src": next.args["src"]}
+                args = AssignArgs([LValue(args.addrs, clear=True)], next_args.src)
                 i += 1
         elif op == "balanced_loop_at" and is_ifnz_block(code, i):
             op = "ifnz"
@@ -166,14 +184,12 @@ def decode_move(addr: int, base_addr: int, memory: list[int]) -> IrStep:
 
         if i != base_addr:
             if memory[i] != 0 and KEEP_ALL_MOVE_DST:
-                s = var_name(var_addr) if fixed_addr else f"$[{var_addr}]"
-                s += ("+" if memory[i] >= 0 else "-")
-                if abs(memory[i]) != 1:
-                        s += f"{abs(memory[i])}"
-                dst.append(s)
+                dst_addr = var_name(var_addr) if fixed_addr else f"$[{var_addr}]"
+                multiplier = memory[i]
+                dst.append(LValue([dst_addr], multiplier=multiplier))
 
     if fixed_addr:
         src = var_name(addr)
     else:
         src = "$[0]"
-    return IrStep("move", {"dst": dst, "src": src})
+    return IrStep("move", AssignArgs(dst, src))
