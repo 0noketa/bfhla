@@ -14,8 +14,13 @@ def print_bfhla(code: list[IrStep]):
     for step in code:
         op, args = step.get_pair()
         if op == "scope":
-            loc = f" @ {args.base}+{args.offset}" if args.base != 0 and args.offset != 0 else ""
-            print_indented(blks, f"scope {args.name}[{args.size}]{loc} = {', '.join(args.vars)}")
+            scope: ScopeDeclArgs = args
+            size = scope.size.to_bfhla()
+            base = scope.base.to_bfhla()
+            offset = scope.offset.to_bfhla()
+
+            loc = f" @ {base}+{offset}" if base != "0" and offset != "0" else ""
+            print_indented(blks, f"scope {scope.name}[{size}]{loc} = {', '.join(scope.vars)}")
         elif op == "at":
             addrs: AddrSelectorArgs = args
             print_indented(blks, f"at {addrs.to_bfhla()}")

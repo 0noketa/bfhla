@@ -38,30 +38,7 @@ class Node:
             return -1
     def __repr__(self):
         return f"{self.op}({','.join(map(repr, self.args))})"
-class ScopeTemplate:
-    def __init__(self, name_: str, size_: Node, base_: Node, offset_: Node, vars_: list[VarDecl]):
-        self.name = name_
-        self.size = size_
-        self.base = base_
-        self.offset = offset_
-        self.vars = vars_
-    def is_relative(self):
-        return not self.base.is_num()
-    def var_names(self):
-        return [i.name for i in self.vars]
-    def __repr__(self):
-        return f"ScopeTemplate('{self.name}', {self.size}, {self.base}, {self.offset}, [{','.join(map(repr, self.vars))}])"
-class Scope:
-    def __init__(self, name_: str, size_: int, base_: Union[str, int], offset_: int, vars_: list[Node]):
-        self.name = name_
-        self.size = size_
-        self.base = base_
-        self.offset = offset_
-        self.vars = vars_
-    def is_relative(self):
-        return not self.base.is_num()
-    def __repr__(self):
-        return f"Scope('{self.name}', {self.size}, {self.base}, {self.offset}, [{','.join(map(repr, self.vars))}])"
+
 class Lex:
     @staticmethod
     def lex_lines(ss: list[str]) -> tuple[Union[str, tuple]]:
@@ -197,11 +174,11 @@ def parse_line(tkns: tuple[Union[str, tuple]]) -> IrStep:
 
     return cmd
 
-def parse_scope_head(tkns: tuple[Union[str, tuple]]) -> tuple[str, Node, Node, Node]:
+def parse_scope_head(tkns: tuple[Union[str, tuple]]) -> tuple[str, ConstExpr, ConstExpr, ConstExpr]:
     name = ""
     size = None
-    base = Node("id", ["__BASE__"])
-    offset = Node("id", ["__OFFSET__"])
+    base = ConstExpr("id", value="__BASE__")
+    offset = ConstExpr("id", value="__OFFSET__")
 
     if len(tkns) >= 1 and type(tkns[0]) is str and tkns[0].isidentifier():
         name = tkns[0]
@@ -216,20 +193,20 @@ def parse_scope_head(tkns: tuple[Union[str, tuple]]) -> tuple[str, Node, Node, N
                 base = parse_const_qualified(tkns[:i])
                 offset = parse_const_expr(tkns[i + 1:])
             else:
-                base = Node("num", ["0"])
+                base = ConstExpr("num", value="0")
                 offset = parse_const_expr(tkns)
 
     return name, size, base, offset
-def parse_scope(tkns: tuple[Union[str, tuple]]) -> ScopeTemplate:
+def parse_scope(tkns: tuple[Union[str, tuple]]) -> ScopeDeclArgs:
     if "=" in tkns:
         i = tkns.index("=")
         name, size, base, offset = parse_scope_head(tkns[:i])
         body = parse_var_decls(tkns[i+1:])
-        return ScopeTemplate(name, size, base, offset, body)
+        return ScopeDeclArgs(name, size, base, offset, body)
     else:
         name, size, base, offset = parse_scope_head(tkns)
         body = parse_var_decls(tkns[1:])
-        return ScopeTemplate(name, size, base, offset, body)
+        return ScopeDeclArgs(name, size, base, offset, body)
 
 def parse_assign(tkns: tuple[Union[str, tuple]], assign_method:str=None, is_move_args: bool = False) -> IrStep:
     if assign_method is None:
@@ -307,23 +284,23 @@ def parse_lval(tkns: tuple[Union[str, tuple]]) -> LValue:
         sign = 1 if tkns[-2] == "+" else -1
         sign *= int(tkns[-1])
         return LValue(tkns[:-2], multiplier=sign)
-    return LValue(tkns)
-def parse_val(tkns: tuple[Union[str, tuple]]) -> Node:
+    return LValue(tkns, clear=True)
+def parse_val(tkns: tuple[Union[str, tuple]]) -> Expr:
     if len(tkns) == 1:
         if tkns[0].isidentifier():
-            return Node("id", [tkns[0]])
+            return Expr("id", value=tkns[0])
         elif tkns[0].isnumeric():
-            return Node("num", [tkns[0]])
+            return Expr("num", value=tkns[0])
         elif tkns[0].startswith('"') and tkns[0].endswith('"'):
-            return Node("str", [tkns[0][1: -1]])
+            return Expr("str", value=tkns[0][1: -1])
         elif tkns[0] == "?":
-            return Node("any", [])
+            return Expr("any", value="?")
         else:
-            return Node("error", tkns)
+            return Expr("error", value=tkns)
     else:
-        return Node("none", [])
+        return Expr("none", value="none")
 
-def parse_var_decls(tkns: tuple[Union[str, tuple]]) -> list[Node]:
+def parse_var_decls(tkns: tuple[Union[str, tuple]]) -> list[VarDecl]:
     args = []
     while "," in tkns:
         i = tkns.index(",")
@@ -379,77 +356,77 @@ def find_left_recur_opr(tkns: tuple[Union[str, tuple]], oprs: list[str]) -> tupl
     opr_idx = indices.index(max_idx)
     return oprs[opr_idx], max_idx
 
-def parse_const_expr(tkns: tuple[Union[str, tuple]]) -> Node:
+def parse_const_expr(tkns: tuple[Union[str, tuple]]) -> ConstExpr:
     return parse_const_cmp(tkns)
-def parse_const_cmp(tkns: tuple[Union[str, tuple]]) -> Node:
+def parse_const_cmp(tkns: tuple[Union[str, tuple]]) -> ConstExpr:
     if len(tkns) >= 3:
         opr, idx = find_left_recur_opr(tkns, ["==", "!=", ">", "<", ">=", "<="])
         if idx != -1:
             left = parse_const_cmp(tkns[:idx])
             right = parse_const_add(tkns[idx + 1:])
             if opr == "==":
-                return Node("eq", [left, right])
+                return ConstExpr("==", [left, right])
             elif opr == "!=":
-                return Node("neq", [left, right])
+                return ConstExpr("!=", [left, right])
             elif opr == ">":
-                return Node("gt", [left, right])
+                return ConstExpr(">", [left, right])
             elif opr == "<":
-                return Node("lt", [left, right])
+                return ConstExpr("<", [left, right])
             elif opr == ">=":
-                return Node("gte", [left, right])
+                return ConstExpr(">=", [left, right])
             elif opr == "<=":
-                return Node("lte", [left, right])
+                return ConstExpr("<=", [left, right])
 
     return parse_const_add(tkns)
-def parse_const_add(tkns: tuple[Union[str, tuple]]) -> Node:
+def parse_const_add(tkns: tuple[Union[str, tuple]]) -> ConstExpr:
     if len(tkns) >= 3:
         opr, idx = find_left_recur_opr(tkns, ["+", "-"])
         if idx != -1:
             left = parse_const_add(tkns[:idx])
             right = parse_const_mul(tkns[idx + 1:])
             if opr == "+":
-                return Node("add", [left, right])
+                return ConstExpr("+", [left, right])
             elif opr == "-":
-                return Node("sub", [left, right])
+                return ConstExpr("-", [left, right])
 
     return parse_const_mul(tkns)
-def parse_const_mul(tkns: tuple[Union[str, tuple]]) -> Node:
+def parse_const_mul(tkns: tuple[Union[str, tuple]]) -> ConstExpr:
     if len(tkns) >= 3:
-        opr, idx = find_left_recur_opr(tkns, ["+", "/", "%"])
+        opr, idx = find_left_recur_opr(tkns, ["*", "/", "%"])
         if idx != -1:
             left = parse_const_mul(tkns[:idx])
             right = parse_const_qualified(tkns[idx + 1:])
             if opr == "*":
-                return Node("mul", [left, right])
+                return ConstExpr("*", [left, right])
             elif opr == "/":
-                return Node("div", [left, right])
+                return ConstExpr("/", [left, right])
             elif opr == "%":
-                return Node("mod", [left, right])
+                return ConstExpr("%", [left, right])
 
     return parse_const_qualified(tkns)
-def parse_const_qualified(tkns: tuple[Union[str, tuple]]) -> Node:
+def parse_const_qualified(tkns: tuple[Union[str, tuple]]) -> ConstExpr:
     if len(tkns) >= 3:
         _, idx = find_left_recur_opr(tkns, ["."])
         if idx != -1:
             left = parse_const_qualified(tkns[:idx])
             right = parse_const_val(tkns[idx + 1:])
-            return Node(".", [left, right])
+            return ConstExpr(".", [left, right])
     elif len(tkns) >= 2 and type(tkns[-1]) == tuple:
         base = parse_const_qualified(tkns[:-1])
         index = parse_const_expr(tkns[-1])
-        return Node("[]", [base, index])
+        return ConstExpr("[]", [base, index])
 
     return parse_const_val(tkns)
-def parse_const_val(tkns: tuple[Union[str, tuple]]) -> Node:
+def parse_const_val(tkns: tuple[Union[str, tuple]]) -> ConstExpr:
     if len(tkns) == 1:
         if tkns[0].isidentifier():
-            return Node("id", [tkns[0]])
+            return ConstExpr("id", value=tkns[0])
         elif tkns[0].isnumeric():
-            return Node("num", [tkns[0]])
+            return ConstExpr("num", value=tkns[0])
         elif tkns[0].startswith('"') and tkns[0].endswith('"'):
-            return Node("str", [tkns[0][1: -1]])
+            return ConstExpr("str", value=tkns[0][1: -1])
 
-    return Node("error", tkns)
+    return ConstExpr("error", tkns)
 
 def parse_type(tkns: tuple[Union[str, tuple]]) -> Node:
     if len(tkns) >= 1:
@@ -470,16 +447,16 @@ def parse_type(tkns: tuple[Union[str, tuple]]) -> Node:
 
 src = sys.stdin.readlines()
 src = Lex.lex_lines(src)
-print(src)
+# print(src)
 prog = []
 for line in src:
-    print(line)
+    print(f"#{line}")
     cmd = parse_line(line)
-    print(cmd)
+    print(f"#{cmd}")
     prog.append(cmd)
 
 for scope_name in scopes:
-    print(scope_name, scopes[scope_name])
+    print("#", scope_name, scopes[scope_name])
 
 import codegen_bfhla
 codegen_bfhla.print_bfhla(prog)

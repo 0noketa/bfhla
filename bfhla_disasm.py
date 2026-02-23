@@ -44,9 +44,9 @@ def disasm(src: list[tuple[str, int]]) -> list[IrStep]:
     dst.append(IrStep("config", ConfigArgs("assign_method", "move")))
     dst.append(IrStep("scope", ScopeDeclArgs(
         GLOBAL_SCOPE_NAME,
-        BUF_SIZE,
-        0,
-        0,
+        ConstExpr("num", value=BUF_SIZE),
+        ConstExpr("num", value=0),
+        ConstExpr("num", value=0),
         NAMED_VARS
     )))
 
