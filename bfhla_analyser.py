@@ -1,5 +1,5 @@
 
-from typing import Tuple
+from typing import cast, Tuple
 from bfhla_config import *
 from bfhla_struct import *
 
@@ -37,7 +37,7 @@ def check_ifnz_block(code: list[IrStep], i: int) -> Tuple[bool, int]:
     j = find_block_end(code, i + 1)
     if (j != -1 and j - 1 >= i):
             last_op = code[j - 1].op
-            last_args: AddrSelectorArgs = code[j - 1].args
+            last_args = cast(AssignArgs, code[j - 1].args)
             if (last_op == "clear"
                     and len(last_args.addrs) == 1
                     and last_args.addrs[0] == code[i].args.addrs[0]
@@ -55,7 +55,7 @@ def check_forrange0_block(code: list[IrStep], i: int) -> Tuple[bool, int]:
 
     if (i + 1 < len(code)):  # ifnz0: balanced loop in the form of "[[-] code]".
         first_op = code[i + 1].op
-        first_args: AssignArgs = code[i + 1].args
+        first_args = cast(AssignArgs, code[i + 1].args)
         if(first_op == "move"
                 and len(first_args.dsts) == 1
                 and first_args.src == "1"
@@ -76,7 +76,7 @@ def check_forrange1_block(code: list[IrStep], i: int) -> Tuple[bool, int]:
     j = find_block_end(code, i + 1)
     if (j != -1 and j - 1 >= i):
             last_op = code[j - 1].op
-            last_args: AssignArgs = code[j - 1].args
+            last_args = cast(AssignArgs, code[j - 1].args)
             if(last_op == "move"
                     and len(last_args.dsts) == 1
                     and last_args.src == "1"
@@ -113,8 +113,9 @@ def rewrite_ir(code: list[IrStep]) -> list[IrStep]:
                 op = "clear"
                 args = AddrSelectorArgs([args.src])
 
-        # if op == "move" and i + 1 < len(code) and next.op == "move":
-        #     pass
+        if op == "move" and next is not None and next.op == "move":
+            pass
+
         if op == "clear":
             expected = args.to_bfhla() + "+"
             next_args: AssignArgs = next.args  # cast
@@ -123,19 +124,20 @@ def rewrite_ir(code: list[IrStep]) -> list[IrStep]:
                     and len(next_args.dsts) == 1
                     and next_args.dsts[0].to_bfhla() == expected):
 
+                # this replacement corrupts code. check AssignArgs
                 op = "move"
-                args = AssignArgs([LValue(args.addrs, clear=True)], next_args.src)
+                args = AssignArgs([LValue([args.to_bfhla()], clear=True)], next_args.src)
                 i += 1
         elif op == "balanced_loop_at" and is_ifnz_block(code, i):
             op = "ifnz"
             _, j = check_ifnz_block(code, i)
             blacklist.append(j - 1)
         elif op == "balanced_loop_at" and is_forrange0_block(code, i):
-            op = "for_range0"
+            op = "predec_for"
             _, j = check_forrange0_block(code, i)
             i += 1
         elif op == "balanced_loop_at" and is_forrange1_block(code, i):
-            op = "for_range1"
+            op = "postdec_for"
             _, j = check_forrange1_block(code, i)
             blacklist.append(j - 1)
 
@@ -154,11 +156,11 @@ def merge_inline_bf(code: list[IrStep]) -> list[IrStep]:
         if op == "bf":
             j = i + 1
             while j < len(code) and code[j].op == "bf":
-                bf = args["code"] + code[j].args["code"]
+                bf = args.to_bfhla() + code[j].args.to_bfhla()
                 if len(bf) > MAX_INLINE_BF_LENGTH:
                     break
 
-                args = {"code": bf}
+                args = BfArgs(bf)
                 j += 1
 
             i = j - 1
@@ -183,7 +185,7 @@ def decode_move(addr: int, base_addr: int, memory: list[int]) -> IrStep:
         var_addr = addr + rel_addr
 
         if i != base_addr:
-            if memory[i] != 0 and KEEP_ALL_MOVE_DST:
+            if memory[i] != 0:
                 dst_addr = var_name(var_addr) if fixed_addr else f"$[{var_addr}]"
                 multiplier = memory[i]
                 dst.append(LValue([dst_addr], multiplier=multiplier))
@@ -192,4 +194,4 @@ def decode_move(addr: int, base_addr: int, memory: list[int]) -> IrStep:
         src = var_name(addr)
     else:
         src = "$[0]"
-    return IrStep("move", AssignArgs(dst, src))
+    return IrStep("move", AssignArgs(dst, Expr.id_node(src)))

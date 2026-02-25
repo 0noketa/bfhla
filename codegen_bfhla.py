@@ -5,7 +5,7 @@ from bfhla_struct import *
 
 
 def print_indented(i: int, s: str) -> str:
-    print(INDENT_UNIT * i + s)
+    print(codegen.indent_unit * i + s)
 
 
 def print_bfhla(code: list[IrStep]):
@@ -23,12 +23,16 @@ def print_bfhla(code: list[IrStep]):
             print_indented(blks, f"scope {scope.name}[{size}]{loc} = {', '.join(scope.vars)}")
         elif op == "at":
             addrs: AddrSelectorArgs = args
-            print_indented(blks, f"at {addrs.to_bfhla()}")
+            sel: Expr = addrs.addrs[0]
+            if sel.op == "signed":
+                print_indented(blks, f"at {sel.args[0]}{sel.args[1].to_bfhla()}")
+            else:
+                print_indented(blks, f"at {sel.to_bfhla()}")
         elif op == "config":
             print_indented(blks, f"config {args.name} = {args.value}")
         elif op == "move":
             assign_pair: AssignArgs = args
-            prefix = "move " if EXPLICIT_MOVE else ""
+            prefix = "move " if codegen.explicit_move else ""
             print_indented(blks, f"{prefix}{assign_pair.to_bfhla()}")
         elif op == "copy":
             assign_pair: AssignArgs = args
@@ -43,11 +47,12 @@ def print_bfhla(code: list[IrStep]):
             addrs: AddrSelectorArgs = args
             print_indented(blks, f"print {addrs.to_bfhla()}")
         elif op == "skipr":
-            print_indented(blks, f"skipr {args['count']}")
+            print_indented(blks, f"skipr {args.to_bfhla()}")
         elif op == "skipl":
-            print_indented(blks, f"skipl {args['count']}")
+            print_indented(blks, f"skipl {args.to_bfhla()}")
         elif op == "bf":
-            print_indented(blks, f"bf {args['code']}")
+            inline_bf: BfArgs = args
+            print_indented(blks, f"bf \"{inline_bf.to_bfhla()}\"")
         elif op == "balanced_loop_at":
             addrs: AddrSelectorArgs = args
             print_indented(blks, f"balanced_loop_at {addrs.to_bfhla()}")
@@ -59,13 +64,13 @@ def print_bfhla(code: list[IrStep]):
             addrs: AddrSelectorArgs = args
             print_indented(blks, f"ifnz {addrs.to_bfhla()}")
             blks += 1
-        elif op == "for_range0":
+        elif op == "predec_for":
             addrs: AddrSelectorArgs = args
-            print_indented(blks, f"for_range0 {addrs.to_bfhla()}")
+            print_indented(blks, f"predec_for {addrs.to_bfhla()}")
             blks += 1
-        elif op == "for_range1":
+        elif op == "postdec_for":
             addrs: AddrSelectorArgs = args
-            print_indented(blks, f"for_range1 {addrs.to_bfhla()}")
+            print_indented(blks, f"postdec_for {addrs.to_bfhla()}")
             blks += 1
         elif op == "loop":
             print_indented(blks, "loop")
