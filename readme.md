@@ -1,8 +1,8 @@
 # bfhla
 
-yet another High-level assembler/disassembler for Brainfuck. successor of [this project][_0noketa_tobf].
+yet another high-level assembler/disassembler for Brainfuck. successor of [this project][_0noketa_tobf].
 
-current version is mess and less featured.
+current version is mess and less featured stub.
 
 [_0noketa_tobf]: <https://github.com/0noketa/tobf>
 

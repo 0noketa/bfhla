@@ -27,6 +27,9 @@ class LValue:
         self.multiplier = multiplier
         self.clear = clear
 
+    def has_clear(self):
+        return self.clear
+
     def addr(self) -> str:
         i = 0
         s = ""

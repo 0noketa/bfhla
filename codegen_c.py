@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import cast, Tuple
 from c_config import *
 from bfhla_struct import *
 import re
@@ -6,7 +6,7 @@ import re
 re_raw_var = re.compile(r"^([a-zA-Z$_][a-zA-Z0-9$_]*)\[(|[+\\-])(\d+)\]$")
 re_bfrle_step = re.compile(r"^(.{1})(\d*)(|.*)$")
 
-def print_indented(i: int, s: str) -> str:
+def print_indented(i: int, s: str):
     print(codegen.indent_unit * i + s)
 
 def addr_from_var(var: str, scopes: list[dict] = None) -> Tuple[str, int]:
@@ -52,7 +52,7 @@ def sanitize(s: str, scopes: list[dict] = None) -> Tuple[bool, str, int]:
 def print_c(code: list[IrStep]):
     blks = 0
     blk_defers = []
-    addr = 0
+    current_addr = 0
     scopes = []
 
     print_indented(blks, "#include <stdio.h>")
@@ -64,7 +64,7 @@ def print_c(code: list[IrStep]):
     for step in code:
         op, args = step.get_pair()
         if op == "scope":
-            scope: ScopeDeclArgs = args
+            scope = cast(ScopeDeclArgs, args)
             size = int(scope.size)
             base = int(scope.base)
             offset = int(scope.offset)
@@ -79,8 +79,8 @@ def print_c(code: list[IrStep]):
             scopes.append(scope)
             print_indented(blks, f"{codegen.cell_type} *{scope['name']} = {codegen.buf_name} + {base + offset};")
         elif op == "at":
-            addrs: AddrSelectorArgs = args
-            sel: Expr = addrs.addrs[0]
+            addrs = cast(AddrSelectorArgs, args)
+            sel = cast(Expr, addrs.addrs[0])
             if sel.op == "signed":
                 print_indented(blks, f"p {sel.args[0]}= {sel.args[1].to_bfhla()};")
             else:
@@ -90,13 +90,13 @@ def print_c(code: list[IrStep]):
         elif op == "config":
             pass
         elif op in ["move", "copy"]:
-            assign_pair: AssignArgs = args
+            assign_pair = cast(AssignArgs, args)
             src_is_var, src_addr, offset = sanitize(assign_pair.src.to_bfhla(), scopes)
 
             for dst in assign_pair.dsts:
                 addr, offset = addr_from_var(dst.addr(), scopes)
-                
-                s = addr
+
+                s = str(addr)
                 s += (" = " if dst.clear
                       else " += " if dst.multiplier >= 0
                       else " -= ")
@@ -109,26 +109,26 @@ def print_c(code: list[IrStep]):
             if op != "copy" and src_is_var:
                 print_indented(blks, f"{src_addr} = 0;")
         elif op == "clear":
-            addrs: AddrSelectorArgs = args
+            addrs = cast(AddrSelectorArgs, args)
             for addr in addrs.addrs:
-                addr = addr_from_var(addr.to_bfhla(), scopes)
+                addr, _ = addr_from_var(addr.to_bfhla(), scopes)
                 print_indented(blks, f"{addr} = 0;")
         elif op == "input":
-            addrs: AddrSelectorArgs = args
-            addr = addr_from_var(addrs.to_bfhla(), scopes)
+            addrs = cast(AddrSelectorArgs, args)
+            addr, _ = addr_from_var(addrs.to_bfhla(), scopes)
             print_indented(blks, f"{addr} = getchar();")
         elif op == "print":
-            addrs: AddrSelectorArgs = args
-            addr = addr_from_var(addrs.to_bfhla(), scopes)
+            addrs = cast(AddrSelectorArgs, args)
+            addr, _ = addr_from_var(addrs.to_bfhla(), scopes)
             print_indented(blks, f"putchar({addr});")
         elif op == "skipr":
-            addrs: AddrSelectorArgs = args
+            addrs = cast(AddrSelectorArgs, args)
             print_indented(blks, f"while (*p) p += {addrs.to_bfhla()};")
         elif op == "skipl":
-            addrs: AddrSelectorArgs = args
+            addrs = cast(AddrSelectorArgs, args)
             print_indented(blks, f"while (*p) p -= {addrs.to_bfhla()};")
         elif op == "bf":
-            inline_bf: BfArgs = args
+            inline_bf = cast(BfArgs, args)
             src = inline_bf.text
             while len(src):
                 m = re_bfrle_step.match(src)
@@ -158,28 +158,28 @@ def print_c(code: list[IrStep]):
                     blk_defers.pop()
                     print_indented(blks, "}")
         elif op == "balanced_loop_at":
-            addrs: AddrSelectorArgs = args
+            addrs = cast(AddrSelectorArgs, args)
             addr = addrs.to_bfhla()
             _, addr, offset = sanitize(addr, scopes)
             print_indented(blks, f"while ({addr}) {{")
             blks += 1
             blk_defers.append("")
         elif op == "ifnz":
-            addrs: AddrSelectorArgs = args
+            addrs = cast(AddrSelectorArgs, args)
             addr = addrs.to_bfhla()
             _, addr, offset = sanitize(addr, scopes)
             print_indented(blks, f"if ({addr}) {{")
             blks += 1
             blk_defers.append(f"{addr} = 0;")
         elif op == "predec_for":
-            addrs: AddrSelectorArgs = args
+            addrs = cast(AddrSelectorArgs, args)
             addr = addrs.to_bfhla()
             _, addr, offset = sanitize(addr, scopes)
             print_indented(blks, f"for (; {addr}; --{addr}) {{")
             blks += 1
             blk_defers.append("")
         elif op == "postdec_for":
-            addrs: AddrSelectorArgs = args
+            addrs = cast(AddrSelectorArgs, args)
             addr = addrs.to_bfhla()
             _, addr, offset = sanitize(addr, scopes)
             print_indented(blks, f"while ({addr}) {{")
@@ -201,10 +201,10 @@ def print_c(code: list[IrStep]):
             blks -= 1
             print_indented(blks, "}")
         elif op == "comment":
-            raw: RawArgs = args
+            raw = cast(RawArgs, args)
             print_indented(blks, raw.args["text"])
         elif op == "error":
-            raw: RawArgs = args
+            raw = cast(RawArgs, args)
             print_indented(blks, f"error {raw.args['src']}")
         else:
             print_indented(blks, f"# unknown instruction: {op}")

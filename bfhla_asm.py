@@ -441,7 +441,7 @@ def parse_const_val(tkns: tuple[Union[str, tuple], ...]) -> Expr:
             return Expr.id_node(tkn)
         elif tkn.isnumeric():
             return Expr.num_node(tkn)
-        elif tkn.startswith('"') and tkn.endswith('"'):
+        elif len(tkn) >= 2 and tkn.startswith('"') and tkn.endswith('"'):
             return Expr.str_node(tkn[1: -1])
 
     if len(tkns) == 2:
