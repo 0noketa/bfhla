@@ -1,6 +1,7 @@
 
-from typing import Tuple
+from typing import Tuple, Generator
 import bf_analyser
+import bf_parser
 import bfhla_config
 from bfhla_struct import *
 import bfhla_analyser
@@ -47,7 +48,7 @@ def disasm(src: list[tuple[str, int]]) -> list[IrStep]:
         Expr("num", value=bfhla_config.disasm.buf_size),
         Expr("num", value=0),
         Expr("num", value=0),
-        bfhla_config.disasm.named_vars
+        list(map(VarDecl, bfhla_config.disasm.named_vars))
     )))
 
     i = 0
@@ -141,7 +142,7 @@ def disasm(src: list[tuple[str, int]]) -> list[IrStep]:
             elif len(blks) <= 1:
                 ins = IrStep("comment", RawArgs({"text": f" error at {i}: unmatched ']'"}))
                 dst.append(ins)
-                return
+                return dst
             else:
                 addr2 = blks.pop()
                 if addr != addr2:
@@ -158,32 +159,9 @@ def disasm(src: list[tuple[str, int]]) -> list[IrStep]:
 
     return dst
 
-def load():
-    try:
-        while True:
-            line = input().strip()
-            # print(f"# {line}")
-
-            while line:
-                c = line[0]
-                if c in "+-><":
-                    arg = 0
-                    while line.startswith(c):
-                        line = line[1:]
-                        arg += 1
-                    yield (c, arg)
-                elif line.startswith("[-]"):
-                    line = line[3:]
-                    yield ("0", 0)
-                else:
-                    line = line[1:]
-                    yield (c, 0)
-    except EOFError:
-        pass
-
 
 if __name__ == "__main__":
-    ir = disasm([*load()])
+    ir = disasm([*bf_parser.load_bf(input)])
     ir = bfhla_analyser.merge_inline_bf(ir)
     if not bfhla_config.general.no_semantic_analyser:
         ir = bfhla_analyser.rewrite_ir(ir)

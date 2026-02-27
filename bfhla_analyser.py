@@ -108,8 +108,8 @@ def rewrite_ir(code: list[IrStep]) -> list[IrStep]:
         else:
             next = None
 
-        if op == "move" and len(args.dsts) == 0:
-            if not args.src.isdigit():
+        if op == "move" and len(args.dsts) == 0 and type(args.src) is Expr:
+            if not args.src.is_const():
                 op = "clear"
                 args = AddrSelectorArgs([args.src])
 
@@ -118,15 +118,15 @@ def rewrite_ir(code: list[IrStep]) -> list[IrStep]:
 
         if op == "clear":
             expected = args.to_bfhla() + "+"
-            next_args: AssignArgs = next.args  # cast
 
             if (next is not None and next.op == "move"
-                    and len(next_args.dsts) == 1
-                    and next_args.dsts[0].to_bfhla() == expected):
+                    and type(next.args) == AssignArgs
+                    and len(next.args.dsts) == 1
+                    and next.args.dsts[0].to_bfhla() == expected):
 
                 # this replacement corrupts code. check AssignArgs
                 op = "move"
-                args = AssignArgs([LValue([args.to_bfhla()], clear=True)], next_args.src)
+                args = AssignArgs([LValue([args.to_bfhla()], clear=True)], next.args.src)
                 i += 1
         elif op == "balanced_loop_at" and is_ifnz_block(code, i):
             op = "ifnz"
@@ -140,6 +140,10 @@ def rewrite_ir(code: list[IrStep]) -> list[IrStep]:
             op = "postdec_for"
             _, j = check_forrange1_block(code, i)
             blacklist.append(j - 1)
+
+        if op in ["copy", "move"] and type(args) is AssignArgs and len(args.dsts) == 0:
+            op = "clear" 
+            args = AddrSelectorArgs([args.src])
 
         dst.append(IrStep(op, args))
         i += 1

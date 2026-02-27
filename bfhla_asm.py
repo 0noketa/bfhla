@@ -163,12 +163,17 @@ def parse_line(tkns: tuple[Union[str, tuple], ...]) -> IrStep:
     elif tkns[0] in ["input", "print"]:
         args = parse_const_expr(tkns[1:])
         cmd = IrStep(tkns[0], AddrSelectorArgs([args]))
-    elif tkns[0] in ["copy", "move"]:
-        # args = parse_assign(tkns[1:], assign_method=tkns[0], is_move_args=True)
-        # cmd = IrStep(tkns[0], AssignArgs(args.args.dst, args.args.src))
-        cmd = parse_assign(tkns[1:], assign_method=tkns[0], is_move_args=True)
     else:
-        cmd = parse_assign(tkns)
+        if tkns[0] in ["copy", "move"]:
+            # args = parse_assign(tkns[1:], assign_method=tkns[0], is_move_args=True)
+            # cmd = IrStep(tkns[0], AssignArgs(args.args.dst, args.args.src))
+            cmd = parse_assign(tkns[1:], assign_method=tkns[0], is_move_args=True)
+        else:
+            cmd = parse_assign(tkns)
+
+        if cmd.op in ["copy", "move"] and type(cmd.args) is AssignArgs and len(cmd.args.dsts) == 0:
+            cmd = IrStep("clear", AddrSelectorArgs([cmd.args.src]))
+
 
     return cmd
 
@@ -200,20 +205,12 @@ def parse_scope(tkns: tuple[Union[str, tuple], ...]) -> ScopeDeclArgs:
         i = tkns.index("=")
         name, size, base, offset = parse_scope_head(tkns[:i])
         body = parse_var_decls(tkns[i+1:])
-        scope = ScopeDeclArgs(name, size, base, offset, body)
+        return ScopeDeclArgs(name, size, base, offset, body)
     else:
         name, size, base, offset = parse_scope_head(tkns)
         body = parse_var_decls(tkns[1:])
-        scope = ScopeDeclArgs(name, size, base, offset, body)
+        return ScopeDeclArgs(name, size, base, offset, body)
 
-    return ScopeDeclArgs(
-        scope.name,
-        scope.size,
-        scope.base,
-        scope.offset,
-        # currently types are ignored
-        scope.var_names()
-    )
 def parse_assign(tkns: tuple[Union[str, tuple], ...], assign_method:str=None, is_move_args: bool = False) -> IrStep:
     if assign_method is None:
         assign_method = config["assign_method"]

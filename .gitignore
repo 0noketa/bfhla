@@ -1,0 +1,9 @@
+__pycache__/*
+test/*.0.*
+test/*.1.*
+*.c
+*.s
+*.out
+*.tmp
+*.bf.bfhla
+*.bfhla.bf

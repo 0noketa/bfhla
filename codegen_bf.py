@@ -3,53 +3,70 @@ from c_config import *
 from bfhla_struct import *
 import re
 
-re_raw_var = re.compile(r"^([a-zA-Z$_][a-zA-Z0-9$_]*)\[(|[+\\-])(\d+)\]$")
+re_raw_var = re.compile(r"^([a-zA-Z$_][a-zA-Z0-9$_]*)(?:\[([+\\-]|)(\d+)\]|)")
 re_bfrle_step = re.compile(r"^(.{1})(\d*)(|.*)$")
 
 def print_indented(i: int, s: str):
     print(codegen.indent_unit * i + s)
 
-def addr_from_var(var: str, scopes: list[dict] = None) -> Tuple[str, bool, int]:
-    """result: (var_repr, is_relative, addr)"""
-    m = re_raw_var.match(var)
+def get_var_info(src: str, current_addr: int, scopes: list[dict] = None) -> Tuple[bool, bool, int]:
+    """result: (is_var, is_relative, addr)"""
+
+    name = src
+    if "[" in name:
+        name = name[:name.index("[")]
+    src_is_var = name.isidentifier() or name == "$"
+    if not src_is_var:
+        n = -1
+        is_rel = False
+        return (src_is_var, is_rel, n)
+
+    m = re_raw_var.match(src)
     if m:
         base = m.group(1)
         sign = m.group(2)
-        offset = int(m.group(3))
+        offset = m.group(3)
+
+        if sign is None:
+            sign = ""
+        no_idx = offset is None
+        if no_idx:
+            offset = 0
+        else:
+            offset = int(offset)
 
         if base == "$":
-            return f"p[{sign}{offset}]", True, offset
+            offset = -offset if sign == "-" else offset
+            if current_addr != -1:
+                offset += current_addr
+
+            return True, True, offset
         elif scopes is not None:
             for scope in reversed(scopes):
+                scope_addr = scope["base"] + scope["offset"]
+                addr = -1
+                for i, v in enumerate(scope["vars"]):
+                    if base == v:
+                        addr = scope_addr + i
+
                 if base == scope["name"]:
-                    addr = scope["base"] + scope["offset"];
+                    addr = scope_addr
+
+                if addr != -1:
                     if sign == "-":
                         addr -= offset
                     else:
                         addr += offset
-                    return f"{scope['name']}[{addr}]", False, addr
+                    return True, False, addr
+        else:
+            print("scopes is None")
 
-        raise ValueError(f"Variable '{var}' not found in any scope")
-
-    for scope in reversed(scopes):
-        if var in scope["vars"]:
-            offset = scope["vars"].index(var)
-            addr = scope["base"] + scope["offset"] + offset
-            return f"{scope['name']}[{addr}]", False, addr
-
-    raise ValueError(f"Variable '{var}' not found in any scope")
-
-def sanitize(s: str, scopes: list[dict] = None) -> Tuple[bool, str, bool, int]:
-    addr = s
-    if "[" in addr:
-        addr = addr[:addr.index("[")]
-    src_is_var = addr.isidentifier() or addr == "$"
-    if src_is_var:
-        addr, is_rel, n = addr_from_var(s, scopes)
+        raise ValueError(f"Variable '{base}' not found in any scope")
     else:
-        n = -1
-        is_rel = False
-    return (src_is_var, addr, is_rel, n)
+        print(f"failed to parse '{src}'")
+
+    raise ValueError(f"Invalid selector '{src}'")
+
 
 def bf_selector(_from: int, _to: int) -> str:
     return "<" * (_from - _to) if _from > _to else ">" * (_to - _from)
@@ -74,7 +91,7 @@ def print_bf(code: list[IrStep]):
                 "size": size,
                 "base": base,
                 "offset": offset,
-                "vars": scope.vars
+                "vars": scope.var_names()
             }
             scopes.append(scope)
         elif op == "at":
@@ -95,7 +112,7 @@ def print_bf(code: list[IrStep]):
             elif current_addr == -1:
                 print_indented(blks, f"error  unable to access to fixed address  # at unknown")
             else:
-                src_is_var, src_addr, is_rel, offset = sanitize(sel.to_bfhla(), scopes)
+                src_is_var, is_rel, offset = get_var_info(sel.to_bfhla(), current_addr, scopes)
                 s = bf_selector(current_addr, offset)
                 current_addr = offset
                 print_indented(blks, f"{s}  # at {current_addr}")
@@ -104,7 +121,8 @@ def print_bf(code: list[IrStep]):
             pass
         elif op in ["move", "copy"]:
             assign_pair = cast(AssignArgs, args)
-            src_is_var, src_addr, is_rel, offset = sanitize(assign_pair.src.to_bfhla(), scopes)
+            src_is_var, is_rel, offset = get_var_info(assign_pair.src.to_bfhla(), current_addr, scopes)
+            src_addr = offset
 
             if src_is_var:
                 tmp_addr = offset
@@ -118,9 +136,7 @@ def print_bf(code: list[IrStep]):
                     for dst in assign_pair.dsts:
                         if not dst.clear:
                             continue
-                        addr, is_rel, offset = addr_from_var(dst.addr(), scopes)
-                        if is_rel and current_addr != -1:
-                            offset += current_addr
+                        src_is_var, is_rel, offset = get_var_info(dst.addr(), current_addr, scopes)
 
                         s += bf_selector(tmp_addr, offset)
                         s += "[-]"
@@ -132,9 +148,7 @@ def print_bf(code: list[IrStep]):
                 s += "["
 
                 for dst in assign_pair.dsts:
-                    addr, is_rel, offset = addr_from_var(dst.addr(), scopes)
-                    if is_rel and current_addr != -1:
-                        offset += current_addr
+                    src_is_var, is_rel, offset = get_var_info(dst.addr(), current_addr, scopes)
 
                     s += bf_selector(tmp_addr, offset)
                     s += ("+" if dst.multiplier >= 0 else "-") * abs(dst.multiplier)
@@ -158,9 +172,7 @@ def print_bf(code: list[IrStep]):
 
                 s = ""
                 for dst in assign_pair.dsts:
-                    addr, is_rel, offset = addr_from_var(dst.addr(), scopes)
-                    if is_rel and current_addr != -1:
-                        offset += current_addr
+                    src_is_var, is_rel, offset = get_var_info(dst.addr(), current_addr, scopes)
 
                     s += bf_selector(tmp_addr, offset)
                     tmp_addr = offset
@@ -174,8 +186,9 @@ def print_bf(code: list[IrStep]):
 
                 print_indented(blks, f"{s}  # const")
 
-            # if op == "copy" and src_is_var:
-            #     print_indented(blks, f"{src_addr} = 0;")
+            if op == "copy" and src_is_var:
+                print_indented(blks, f"# restore copy at here")
+                # print_indented(blks, f"{src_addr} = 0;")
         elif op in ["clear", "input", "print"]:
             addrs = cast(AddrSelectorArgs, args)
             tmp_addr = current_addr
@@ -186,9 +199,8 @@ def print_bf(code: list[IrStep]):
                 "print": ".",
             }[op]
             for addr in addrs.addrs:
-                addr, is_rel, offset = addr_from_var(addr.to_bfhla(), scopes)
-                if is_rel:
-                    offset += current_addr
+                src_is_var, is_rel, offset = get_var_info(addr.to_bfhla(), current_addr, scopes)
+
                 s += bf_selector(tmp_addr, offset)
                 s += f
                 tmp_addr = offset
@@ -230,7 +242,7 @@ def print_bf(code: list[IrStep]):
                     current_addr -= n
                 elif c == ",":
                     s += ","
-                elif c == ",":
+                elif c == ".":
                     s += "."
                 elif c == "[":
                     s += "["
@@ -245,10 +257,8 @@ def print_bf(code: list[IrStep]):
             print_indented(blks, f"{s}  # inline bf")
         elif op == "balanced_loop_at":
             addrs = cast(AddrSelectorArgs, args)
-            addr = addrs.to_bfhla()
-            _, addr, is_rel, offset = sanitize(addr, scopes)
-            if is_rel:
-                offset += current_addr
+            src_is_var, is_rel, offset = get_var_info(addrs.to_bfhla(), current_addr, scopes)
+
             s = bf_selector(current_addr, offset)
             current_addr = offset
             blk_defers.append((current_addr, ""))
@@ -257,10 +267,8 @@ def print_bf(code: list[IrStep]):
             blks += 1
         elif op == "ifnz":
             addrs = cast(AddrSelectorArgs, args)
-            addr = addrs.to_bfhla()
-            _, addr, is_rel, offset = sanitize(addr, scopes)
-            if is_rel:
-                offset += current_addr
+            src_is_var, is_rel, offset = get_var_info(addrs.to_bfhla(), current_addr, scopes)
+
             s = bf_selector(current_addr, offset)
             current_addr = offset
             blk_defers.append((current_addr, "[-]"))
@@ -269,10 +277,8 @@ def print_bf(code: list[IrStep]):
             blks += 1
         elif op == "predec_for":
             addrs = cast(AddrSelectorArgs, args)
-            addr = addrs.to_bfhla()
-            _, addr, is_rel, offset = sanitize(addr, scopes)
-            if is_rel:
-                offset += current_addr
+            src_is_var, is_rel, offset = get_var_info(addrs.to_bfhla(), current_addr, scopes)
+
             s = bf_selector(current_addr, offset)
             current_addr = offset
             blk_defers.append((current_addr, ""))
@@ -281,10 +287,8 @@ def print_bf(code: list[IrStep]):
             blks += 1
         elif op == "postdec_for":
             addrs = cast(AddrSelectorArgs, args)
-            addr = addrs.to_bfhla()
-            _, addr, is_rel, offset = sanitize(addr, scopes)
-            if is_rel:
-                offset += current_addr
+            src_is_var, is_rel, offset = get_var_info(addrs.to_bfhla(), current_addr, scopes)
+
             s = bf_selector(current_addr, offset)
             current_addr = offset
             blk_defers.append((current_addr, "-"))

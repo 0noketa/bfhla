@@ -114,3 +114,50 @@ def calc_move(src: list[Tuple[str, int]], start: int, base_addr: int = 0, memory
 def is_move(src: list[Tuple[str, int]], start: int) -> bool:
     comd, _, _, _ = calc_move(src, start)
     return comd
+
+
+def optimize_bf(src: list[Tuple[str, int]]):
+    modified = True
+    while modified:
+        modified = False
+        i = 0
+        while i + 1 < len(src):
+            it = src[i]
+            next = src[i + 1]
+            op_pair = set((it[0], next[0]))
+            if op_pair in (set((">", "<")), set(("+", "-"))):
+                if it[1] > next[1]:
+                    src[i] = (it[0], it[1] - next[1])
+                    src.pop(i + 1)
+                    modified = True
+                    continue
+                else:
+                    src[i] = (next[0], next[1] - it[1])
+                    src.pop(i + 1)
+                    if i > 0:
+                        i -= 1
+                    modified = True
+                    continue
+            i += 1
+
+def bfrle_to_str(src: list[Tuple[str, int]]) -> str:
+    s = ""
+    for op, n in src:
+        if op == "0":
+            s += "[-]"
+        elif op in "+-><":
+            s += f"{op}{n}"
+        else:
+            s += op
+    return s
+
+def bfrle_to_bf(src: list[Tuple[str, int]]) -> str:
+    s = ""
+    for op, n in src:
+        if op == "0":
+            s += "[-]"
+        elif op in "+-><":
+            s += op * n
+        else:
+            s += op
+    return s
