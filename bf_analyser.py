@@ -117,28 +117,44 @@ def is_move(src: list[Tuple[str, int]], start: int) -> bool:
 
 
 def optimize_bf(src: list[Tuple[str, int]]):
-    modified = True
-    while modified:
-        modified = False
-        i = 0
-        while i + 1 < len(src):
-            it = src[i]
-            next = src[i + 1]
-            op_pair = set((it[0], next[0]))
-            if op_pair in (set((">", "<")), set(("+", "-"))):
-                if it[1] > next[1]:
-                    src[i] = (it[0], it[1] - next[1])
-                    src.pop(i + 1)
-                    modified = True
-                    continue
-                else:
-                    src[i] = (next[0], next[1] - it[1])
-                    src.pop(i + 1)
+    i = 0
+    while i + 1 < len(src):
+        it = src[i]
+        next = src[i + 1]
+
+        if it[0] == next[0]:
+            src[i] = (it[0], it[1] + next[1])
+            src.pop(i + 1)
+            continue
+        elif it[0] in ("+", "-") and next[0] == "0":
+            src[i] = next
+            src.pop(i + 1)
+            continue
+
+        op_pair = set((it[0], next[0]))
+        if op_pair in (set((">", "<")), set(("+", "-"))):
+            if it[1] > next[1]:
+                src[i] = (it[0], it[1] - next[1])
+                src.pop(i + 1)
+                if src[i][1] == 0:
+                    src.pop(i)
                     if i > 0:
                         i -= 1
-                    modified = True
-                    continue
-            i += 1
+                # modified = True
+                continue
+            else:
+                src[i] = (next[0], next[1] - it[1])
+                src.pop(i + 1)
+
+                if src[i][1] == 0:
+                    src.pop(i)
+                    if i > 0:
+                        i -= 1
+                if i > 0:
+                    i -= 1
+                # modified = True
+                continue
+        i += 1
 
 def bfrle_to_str(src: list[Tuple[str, int]]) -> str:
     s = ""
