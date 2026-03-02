@@ -1,4 +1,4 @@
-from typing import cast, Union
+from typing import cast
 import re
 import bf_config
 from bfhla_struct import *

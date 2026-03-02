@@ -1,4 +1,4 @@
-from typing import cast, Union
+from typing import cast
 import re
 import bfhla_config
 from bfhla_struct import *
@@ -40,7 +40,7 @@ class Node:
 
 class Lex:
     @staticmethod
-    def lex_lines(ss: list[str]) -> tuple[Union[str, tuple], ...]:
+    def lex_lines(ss: list[str]) -> tuple[str|tuple, ...]:
         dst = []
         for s in ss:
             tkns = lex.findall(s)
@@ -62,7 +62,7 @@ class Lex:
     def block_left_by_right(s: str) -> str:
         return {"(": ")", "[": "]", "{": "}"}[s]
     @staticmethod
-    def fold_blocks(tkns: list[str], block_right="(") -> tuple[tuple[Union[str, tuple], ...], int]:
+    def fold_blocks(tkns: list[str], block_right="(") -> tuple[tuple[str|tuple, ...], int]:
         """last step. this method turns lists into tuples"""
         block_left = Lex.block_left_by_right(block_right)
         dst = []
@@ -97,7 +97,7 @@ config = {
 }
 
 
-def parse_line(tkns: tuple[Union[str, tuple], ...]) -> IrStep:
+def parse_line(tkns: tuple[str|tuple, ...]) -> IrStep:
     global current_base
 
     if tkns[0] == "config":
@@ -177,7 +177,7 @@ def parse_line(tkns: tuple[Union[str, tuple], ...]) -> IrStep:
 
     return cmd
 
-def parse_scope_head(tkns: tuple[Union[str, tuple], ...]) -> tuple[str, Expr, Expr, Expr]:
+def parse_scope_head(tkns: tuple[str|tuple, ...]) -> tuple[str, Expr, Expr, Expr]:
     name = ""
     size = None
     base = Expr.id_node("__BASE__")
@@ -200,7 +200,7 @@ def parse_scope_head(tkns: tuple[Union[str, tuple], ...]) -> tuple[str, Expr, Ex
                 offset = parse_const_expr(tkns)
 
     return name, size, base, offset
-def parse_scope(tkns: tuple[Union[str, tuple], ...]) -> ScopeDeclArgs:
+def parse_scope(tkns: tuple[str|tuple, ...]) -> ScopeDeclArgs:
     if "=" in tkns:
         i = tkns.index("=")
         name, size, base, offset = parse_scope_head(tkns[:i])
@@ -211,7 +211,7 @@ def parse_scope(tkns: tuple[Union[str, tuple], ...]) -> ScopeDeclArgs:
         body = parse_var_decls(tkns[1:])
         return ScopeDeclArgs(name, size, base, offset, body)
 
-def parse_assign(tkns: tuple[Union[str, tuple], ...], assign_method:str=None, is_move_args: bool = False) -> IrStep:
+def parse_assign(tkns: tuple[str|tuple, ...], assign_method:str=None, is_move_args: bool = False) -> IrStep:
     if assign_method is None:
         assign_method = config["assign_method"]
 
@@ -233,7 +233,7 @@ def parse_assign(tkns: tuple[Union[str, tuple], ...], assign_method:str=None, is
 
     return IrStep("error", RawArgs({"src": tkns}))
 
-def parse_legacy_assign_args(tkns: tuple[Union[str, tuple], ...]) -> list[Node]:
+def parse_legacy_assign_args(tkns: tuple[str|tuple, ...]) -> list[Node]:
     args = []
     if "," in tkns:
         i = tkns.index(",")
@@ -243,7 +243,7 @@ def parse_legacy_assign_args(tkns: tuple[Union[str, tuple], ...]) -> list[Node]:
 
     args.extend(parse_dsts(tkns))
     return args
-def parse_args(tkns: tuple[Union[str, tuple], ...]) -> tuple[Node]:
+def parse_args(tkns: tuple[str|tuple, ...]) -> tuple[Node]:
     args = []
     while "," in tkns:
         i = tkns.index(",")
@@ -255,7 +255,7 @@ def parse_args(tkns: tuple[Union[str, tuple], ...]) -> tuple[Node]:
     args.append(arg)
 
     return tuple(args)
-def parse_names(tkns: tuple[Union[str, tuple], ...]) -> tuple[Node]:
+def parse_names(tkns: tuple[str|tuple, ...]) -> tuple[Node]:
     args = []
     while "," in tkns[1:]:
         i = tkns.index(",")
@@ -266,7 +266,7 @@ def parse_names(tkns: tuple[Union[str, tuple], ...]) -> tuple[Node]:
     name = parse_const_qualified(tkns)
     args.append(name)
     return tuple(args)
-def parse_dsts(tkns: tuple[Union[str, tuple], ...]) -> list[LValue]:
+def parse_dsts(tkns: tuple[str|tuple, ...]) -> list[LValue]:
     args = []
     while "," in tkns:
         i = tkns.index(",")
@@ -279,7 +279,7 @@ def parse_dsts(tkns: tuple[Union[str, tuple], ...]) -> list[LValue]:
 
     return args
 
-def parse_lval(tkns: tuple[Union[str, tuple], ...]) -> LValue:
+def parse_lval(tkns: tuple[str|tuple, ...]) -> LValue:
     if len(tkns) > 1 and type(tkns[-1]) is str:
         if tkns[-1] in ["+", "-"]:
             sign = 1 if tkns[-1] == "+" else -1
@@ -289,7 +289,7 @@ def parse_lval(tkns: tuple[Union[str, tuple], ...]) -> LValue:
             sign *= int(tkns[-1])
             return LValue(tkns[:-2], multiplier=sign)
     return LValue(tkns, clear=True)
-def parse_val(tkns: tuple[Union[str, tuple], ...]) -> Expr:
+def parse_val(tkns: tuple[str|tuple, ...]) -> Expr:
     if len(tkns) == 1 and type(tkns[0]) is str:
         if tkns[0].isidentifier() or tkns[0] == "$":
             return Expr.id_node(tkns[0])
@@ -305,12 +305,12 @@ def parse_val(tkns: tuple[Union[str, tuple], ...]) -> Expr:
             and type(tkns[0]) is str
             and (tkns[0].isidentifier() or tkns[0] == "$")):
         id = Expr.id_node(tkns[0])
-        idx = parse_const_expr(cast(tuple[Union[str, tuple], ...], tkns[1]))
+        idx = parse_const_expr(cast(tuple[str|tuple, ...], tkns[1]))
         return Expr("indexed", [id, idx])
     else:
         return Expr("none", value="none")
 
-def parse_var_decls(tkns: tuple[Union[str, tuple], ...]) -> list[VarDecl]:
+def parse_var_decls(tkns: tuple[str|tuple, ...]) -> list[VarDecl]:
     args = []
     while "," in tkns:
         i = tkns.index(",")
@@ -322,7 +322,7 @@ def parse_var_decls(tkns: tuple[Union[str, tuple], ...]) -> list[VarDecl]:
     args.append(arg)
 
     return args
-def parse_var_decl(tkns: tuple[Union[str, tuple], ...]) -> VarDecl:
+def parse_var_decl(tkns: tuple[str|tuple, ...]) -> VarDecl:
     if len(tkns) >= 1:
         tkn = cast(str, tkns[0])
         if tkn.isidentifier():
@@ -336,7 +336,7 @@ def parse_var_decl(tkns: tuple[Union[str, tuple], ...]) -> VarDecl:
 
     return VarDecl("error", f"<error_type: {tkns}>")
 
-def find_right_recur_opr(tkns: tuple[Union[str, tuple], ...], oprs: list[str]) -> tuple[str, int]:
+def find_right_recur_opr(tkns: tuple[str|tuple, ...], oprs: list[str]) -> tuple[str, int]:
     indices = []
     for opr in oprs:
         try:
@@ -352,7 +352,7 @@ def find_right_recur_opr(tkns: tuple[Union[str, tuple], ...], oprs: list[str]) -
     opr_idx = indices.index(min_idx)
     return oprs[opr_idx], min_idx
 
-def find_left_recur_opr(tkns: tuple[Union[str, tuple], ...], oprs: list[str]) -> tuple[str, int]:
+def find_left_recur_opr(tkns: tuple[str|tuple, ...], oprs: list[str]) -> tuple[str, int]:
     indices = []
     for opr in oprs:
         try:
@@ -368,9 +368,9 @@ def find_left_recur_opr(tkns: tuple[Union[str, tuple], ...], oprs: list[str]) ->
     opr_idx = indices.index(max_idx)
     return oprs[opr_idx], max_idx
 
-def parse_const_expr(tkns: tuple[Union[str, tuple], ...]) -> Expr:
+def parse_const_expr(tkns: tuple[str|tuple, ...]) -> Expr:
     return parse_const_cmp(tkns)
-def parse_const_cmp(tkns: tuple[Union[str, tuple], ...]) -> Expr:
+def parse_const_cmp(tkns: tuple[str|tuple, ...]) -> Expr:
     if len(tkns) >= 3:
         opr, idx = find_left_recur_opr(tkns, ["==", "!=", ">", "<", ">=", "<="])
         if idx != -1:
@@ -390,7 +390,7 @@ def parse_const_cmp(tkns: tuple[Union[str, tuple], ...]) -> Expr:
                 return Expr("<=", [left, right])
 
     return parse_const_add(tkns)
-def parse_const_add(tkns: tuple[Union[str, tuple], ...]) -> Expr:
+def parse_const_add(tkns: tuple[str|tuple, ...]) -> Expr:
     if len(tkns) >= 3:
         opr, idx = find_left_recur_opr(tkns, ["+", "-"])
         if idx != -1:
@@ -402,7 +402,7 @@ def parse_const_add(tkns: tuple[Union[str, tuple], ...]) -> Expr:
                 return Expr("-", [left, right])
 
     return parse_const_mul(tkns)
-def parse_const_mul(tkns: tuple[Union[str, tuple], ...]) -> Expr:
+def parse_const_mul(tkns: tuple[str|tuple, ...]) -> Expr:
     if len(tkns) >= 3:
         opr, idx = find_left_recur_opr(tkns, ["*", "/", "%"])
         if idx != -1:
@@ -416,7 +416,7 @@ def parse_const_mul(tkns: tuple[Union[str, tuple], ...]) -> Expr:
                 return Expr("%", [left, right])
 
     return parse_const_qualified(tkns)
-def parse_const_qualified(tkns: tuple[Union[str, tuple], ...]) -> Expr:
+def parse_const_qualified(tkns: tuple[str|tuple, ...]) -> Expr:
     if len(tkns) >= 3:
         _, idx = find_left_recur_opr(tkns, ["."])
         if idx != -1:
@@ -429,7 +429,7 @@ def parse_const_qualified(tkns: tuple[Union[str, tuple], ...]) -> Expr:
         return Expr("[]", [base, index])
 
     return parse_const_val(tkns)
-def parse_const_val(tkns: tuple[Union[str, tuple], ...]) -> Expr:
+def parse_const_val(tkns: tuple[str|tuple, ...]) -> Expr:
     if len(tkns) == 1:
         tkn = cast(str, tkns[0])
         if type(tkn) == tuple:
@@ -447,7 +447,7 @@ def parse_const_val(tkns: tuple[Union[str, tuple], ...]) -> Expr:
 
     return Expr("error", value=f"{tkns}")
 
-def parse_type(tkns: tuple[Union[str, tuple], ...]) -> Node:
+def parse_type(tkns: tuple[str|tuple, ...]) -> Node:
     if len(tkns) >= 1:
         if type(tkns[-1]) == tuple:
             array_len = parse_const_expr(tkns[-1])

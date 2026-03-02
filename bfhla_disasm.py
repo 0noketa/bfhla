@@ -11,7 +11,9 @@ import codegen_bf
 # least version without any scope-inference
 # current version disassembles only codes with balanced loops and static addressing
 
-
+# bugs:
+#   when program contains only balanced loops, last unused ">" and "<" will be ignored.
+#   that canses error if output was linked.
 
 def bfrle(cmd, n) -> str:
     if n == 0:
@@ -62,24 +64,26 @@ def disasm(src: list[tuple[str, int]]) -> list[IrStep]:
             else:
                 ins = IrStep("move", AssignArgs(
                     [LValue([var_name(addr)], multiplier=1 if op == "+" else -1)],
-                    str(arg)
+                    Expr.num_node(str(arg))
                 ))
         elif op == "0":
             if addr == -1:
-                ins = IrStep("bf", BfArgs("[-]"))
+                ins = IrStep("clear", AddrSelectorArgs([
+                    Expr.id_node("$[0]")
+                ]))
             elif len(src) > i + 1 and src[i + 1][0] == "+":
                 ins = IrStep("move", AssignArgs(
                     [LValue([var_name(addr)], clear=True)],
-                    str(src[i + 1][1])
+                    Expr.num_node(str(src[i + 1][1]))
                 ))
                 i += 1
             else:
                 ins = IrStep("clear", AddrSelectorArgs([
-                    Expr("id", value=var_name(addr))
+                    Expr.id_node(var_name(addr))
                 ]))
         elif op == ">":
             if addr == -1:
-                sel = Expr("signed", ["+", Expr("num", value=int(arg))])
+                sel = Expr("signed", ["+", Expr.num_node(str(arg))])
                 ins = IrStep("at", AddrSelectorArgs([sel]))
                 # ins = IrStep("bf", {"code": bfrle(">", arg)})
             else:
@@ -88,7 +92,7 @@ def disasm(src: list[tuple[str, int]]) -> list[IrStep]:
                 continue
         elif op == "<":
             if addr == -1:
-                sel = Expr("signed", ["-", Expr("num", value=int(arg))])
+                sel = Expr("signed", ["-", Expr.num_node(str(arg))])
                 ins = IrStep("at", AddrSelectorArgs([sel]))
                 # ins = IrStep("bf", BfArgs(bfrle("<", arg)))
             else:
@@ -100,19 +104,19 @@ def disasm(src: list[tuple[str, int]]) -> list[IrStep]:
                 ins = IrStep("bf", BfArgs(","))
             else:
                 ins = IrStep("input", AddrSelectorArgs([
-                    Expr("id", value=var_name(addr))
+                    Expr.id_node(var_name(addr))
                 ]))
         elif op == ".":
             if addr == -1:
                 ins = IrStep("bf", BfArgs("."))
             else:
                 ins = IrStep("print", AddrSelectorArgs([
-                    Expr("id", value=var_name(addr))
+                    Expr.id_node(var_name(addr))
                 ]))
         elif op == "[":
             if bf_analyser.is_skip(src, i):
                 _, n, i = bf_analyser.check_skip(src, i)
-                sel = Expr("num", value=abs(n))
+                sel = Expr.num_node(str(abs(n)))
                 ins = IrStep(("skipr" if n > 0 else "skipl"), AddrSelectorArgs([sel]))
                 dst.append(ins)
                 addr = -1
@@ -124,14 +128,14 @@ def disasm(src: list[tuple[str, int]]) -> list[IrStep]:
                 continue
             elif bf_analyser.is_balanced_loop(src, i):
                 if addr != -1:
-                    sel = Expr("id", value=var_name(addr))
+                    sel = Expr.id_node(var_name(addr))
                     ins = IrStep("balanced_loop_at", AddrSelectorArgs([sel]))
                 else:
                     ins = IrStep("balanced_loop", RawArgs({}))
                 blks.append(addr)
             else:
                 if addr != -1:
-                    sel = Expr("id", value=var_name(addr))
+                    sel = Expr.id_node(var_name(addr))
                     ins = IrStep("at", AddrSelectorArgs([sel]))
                     dst.append(ins)
                 ins = IrStep("loop", RawArgs({}))
@@ -161,7 +165,9 @@ def disasm(src: list[tuple[str, int]]) -> list[IrStep]:
 
 
 if __name__ == "__main__":
-    ir = disasm([*bf_parser.load_bf(input)])
+    bf = [*bf_parser.load_bf(input)]
+    bf_analyser.optimize_bf(bf)
+    ir = disasm(bf)
     ir = bfhla_analyser.merge_inline_bf(ir)
     if not bfhla_config.general.no_semantic_analyser:
         ir = bfhla_analyser.rewrite_ir(ir)

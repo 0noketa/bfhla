@@ -248,7 +248,7 @@ def print_bf(code: list[IrStep]):
                     s += "["
                     current_addr = -1
                     blks += 1
-                    blk_defers.append("")
+                    blk_defers.append((-1, ""))
                 elif c == "]":
                     current_addr = -1
                     blks -= 1

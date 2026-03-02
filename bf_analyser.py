@@ -1,7 +1,8 @@
 
-from typing import Tuple
+from typing import Tuple, Callable, Optional
 
 # every list[tuple[str, int]] means BF-RLE in list of tuple form
+# includes command "0" that means "[-]" and will be replaced with "-" when it was printed.
 
 # macro instructions:
 #   0: "[-]"
@@ -76,7 +77,7 @@ def is_balanced_loop(src: list[Tuple[str, int]], start: int) -> bool:
     return cond
 
 
-def calc_move(src: list[Tuple[str, int]], start: int, base_addr: int = 0, memory: list[int] = None) -> Tuple[bool, int, list[int], int]:
+def calc_move(src: list[Tuple[str, int]], start: int, base_addr: int = 0, memory: Optional[list[int]] = None) -> Tuple[bool, int, list[int], int]:
     """result: (is_move, base_addr in memory_map, mempry_map, next)"""
     if not is_balanced_loop(src, start):
         return False, 0, [], 0
@@ -122,7 +123,11 @@ def optimize_bf(src: list[Tuple[str, int]]):
         it = src[i]
         next = src[i + 1]
 
-        if it[0] == next[0]:
+        if it[0] not in ("+", "-", ">", "<", ",", ".", "[", "]", "0"):
+            src[i] = next
+            src.pop(i + 1)
+            continue
+        elif it[0] == next[0] and it[0] in ("+", "-", ">", "<"):
             src[i] = (it[0], it[1] + next[1])
             src.pop(i + 1)
             continue
@@ -130,10 +135,18 @@ def optimize_bf(src: list[Tuple[str, int]]):
             src[i] = next
             src.pop(i + 1)
             continue
+        elif i + 2 < len(src) and it[0] == "[" and next[0] == "-" and src[i + 2][0] == "]":
+            import sys
+            sys.stderr.write(f"from {bfrle_highlight(src, i)}\n")
+            src[i] = ("0", 0)
+            src.pop(i + 1)
+            src.pop(i + 1)
+            sys.stderr.write(f"to {bfrle_highlight(src, i)}\n")
+            continue
 
         op_pair = set((it[0], next[0]))
         if op_pair in (set((">", "<")), set(("+", "-"))):
-            if it[1] > next[1]:
+            if it[1] >= next[1]:
                 src[i] = (it[0], it[1] - next[1])
                 src.pop(i + 1)
                 if src[i][1] == 0:
@@ -146,10 +159,6 @@ def optimize_bf(src: list[Tuple[str, int]]):
                 src[i] = (next[0], next[1] - it[1])
                 src.pop(i + 1)
 
-                if src[i][1] == 0:
-                    src.pop(i)
-                    if i > 0:
-                        i -= 1
                 if i > 0:
                     i -= 1
                 # modified = True
@@ -176,4 +185,14 @@ def bfrle_to_bf(src: list[Tuple[str, int]]) -> str:
             s += op * n
         else:
             s += op
+    return s
+
+def bfrle_highlight(src: list[Tuple[str, int]], pos: int, surrounding_steps=8, highlight: Optional[Callable[[str], str]]=None) -> str:
+    n = surrounding_steps
+    s = bfrle_to_str(src[:pos][-n:])
+    if highlight is not None:
+        s += highlight(bfrle_to_str(src[pos:pos + 1]))
+    else:
+        s += f" *{bfrle_to_str(src[pos:pos + 1])}* "
+    s += bfrle_to_str(src[pos + 1:][:n])
     return s

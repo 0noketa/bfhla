@@ -1,5 +1,5 @@
 
-from typing import Tuple, Union
+from typing import Tuple, Union, Optional
 import bfhla_config
 
 
@@ -101,7 +101,7 @@ class Expr:
     def id_node(cls, id: str):
         return Expr("id", value=id)
 
-    def __init__(self, op: str, args: list = None, value: Union[int, str] = 0):
+    def __init__(self, op: str, args: Optional[list] = None, value: Union[int, str] = 0):
         self.op = op
         self.args: list[Expr] = args if args is not None else []
         self.value = value
@@ -209,7 +209,7 @@ class Expr:
         return f"{self.op}({','.join(map(repr, self.args))})"
 
 class RawArgs(IArgs):
-    def __init__(self, args: dict = None):
+    def __init__(self, args: Optional[dict] = None):
         self.args = args
     def to_bfhla(self):
         return '"' + ", ".join(f"{k}: {v}" for k, v in self.args.items()) + '"'
