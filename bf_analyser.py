@@ -136,12 +136,9 @@ def optimize_bf(src: list[Tuple[str, int]]):
             src.pop(i + 1)
             continue
         elif i + 2 < len(src) and it[0] == "[" and next[0] == "-" and src[i + 2][0] == "]":
-            import sys
-            sys.stderr.write(f"from {bfrle_highlight(src, i)}\n")
             src[i] = ("0", 0)
             src.pop(i + 1)
             src.pop(i + 1)
-            sys.stderr.write(f"to {bfrle_highlight(src, i)}\n")
             continue
 
         op_pair = set((it[0], next[0]))
