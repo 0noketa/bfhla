@@ -91,12 +91,18 @@ def disasm(src: list[tuple[str, int]]) -> list[IrStep]:
                 i += 1
                 continue
         elif op == "<":
+            if addr != -1:
+                if addr - arg < 0:
+                    arg -= addr
+                    addr = -1
+                else:
+                    addr -= arg
+
             if addr == -1:
                 sel = Expr("signed", ["-", Expr.num_node(str(arg))])
                 ins = IrStep("at", AddrSelectorArgs([sel]))
                 # ins = IrStep("bf", BfArgs(bfrle("<", arg)))
             else:
-                addr -= arg
                 i += 1
                 continue
         elif op == ",":

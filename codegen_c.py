@@ -94,11 +94,21 @@ def print_c(code: list[IrStep]):
             addrs = cast(AddrSelectorArgs, args)
             sel = cast(Expr, addrs.addrs[0])
             if sel.op == "signed":
-                print_indented(blks, f"p {sel.args[0]}= {sel.args[1].to_bfhla()};")
+                sel2 = cast(Expr, sel.args[1])
+                n = int(sel2)
+                if sel.args[0] == "-":
+                    n = -n
+
+                if current_addr != -1:
+                    current_addr += n
+
+                if current_addr == -1:
+                    print_indented(blks, f"p {sel.args[0]}= {sel.args[1].to_bfhla()};")
             else:
                 addr, src_is_var, is_rel, offset = get_var_info(sel.to_bfhla(), current_addr, scopes)
 
-                print_indented(blks, f"p = {codegen.buf_name} + {offset};")
+                current_addr = offset
+                # print_indented(blks, f"p = {codegen.buf_name} + {offset};")
 
         elif op == "config":
             pass
@@ -136,9 +146,15 @@ def print_c(code: list[IrStep]):
             print_indented(blks, f"putchar({addr});")
         elif op == "skipr":
             addrs = cast(AddrSelectorArgs, args)
+            if current_addr != -1:
+                print_indented(blks, f"p = &mem[{current_addr}];")
+                current_addr = -1
             print_indented(blks, f"while (*p) p += {addrs.to_bfhla()};")
         elif op == "skipl":
             addrs = cast(AddrSelectorArgs, args)
+            if current_addr != -1:
+                print_indented(blks, f"p = &mem[{current_addr}];")
+                current_addr = -1
             print_indented(blks, f"while (*p) p -= {addrs.to_bfhla()};")
         elif op == "bf":
             inline_bf = cast(BfArgs, args)
@@ -151,21 +167,46 @@ def print_c(code: list[IrStep]):
                 if n == "":
                     n = 1
                 if c == "+":
-                    print_indented(blks, f"*p += {n};")
+                    if current_addr != -1:
+                        print_indented(blks, f"bf_mem[{current_addr}] += {n};")
+                    else:
+                        print_indented(blks, f"*p += {n};")
                 elif c == "-":
-                    print_indented(blks, f"*p -= {n};")
+                    if current_addr != -1:
+                        print_indented(blks, f"bf_mem[{current_addr}] -= {n};")
+                    else:
+                        print_indented(blks, f"*p -= {n};")
                 elif c == ">":
-                    print_indented(blks, f"p += {n};")
+                    if current_addr != -1:
+                        current_addr += n
+                    else:
+                        print_indented(blks, f"p += {n};")
                 elif c == "<":
-                    print_indented(blks, f"p -= {n};")
+                    if current_addr != -1:
+                        if current_addr - n < 0:
+                            print_indented(blks, f"p = bf_mem + {current_addr};")
+                            current_addr = -1
+                        else:
+                            current_addr -= 1
+                    if current_addr == -1:
+                        print_indented(blks, f"p -= {n};")
                 elif c == ",":
-                    print_indented(blks, f"*p = getchar();")
-                elif c == ",":
-                    print_indented(blks, f"putchar(*p);")
+                    if current_addr != -1:
+                        print_indented(blks, f"bf_mem[{current_addr}] = getchar();")
+                    else:
+                        print_indented(blks, f"*p = getchar();")
+                elif c == ".":
+                    if current_addr != -1:
+                        print_indented(blks, f"putchar(bf_mem[{current_addr}]);")
+                    else:
+                        print_indented(blks, f"putchar(*p);")
                 elif c == "[":
+                    if current_addr != -1:
+                        print_indented(blks, f"p = bf_mem + {current_addr};")
+                        current_addr = -1
                     print_indented(blks, "while (*p) {")
                     blks += 1
-                    blk_defers.append("")
+                    blk_defers.append((current_addr, ""))
                 elif c == "]":
                     blks -= 1
                     blk_defers.pop()
@@ -174,41 +215,56 @@ def print_c(code: list[IrStep]):
             addrs = cast(AddrSelectorArgs, args)
             addr, src_is_var, is_rel, offset = get_var_info(addrs.to_bfhla(), current_addr, scopes)
 
+            current_addr = offset
+            blk_defers.append((current_addr, ""))
+
             print_indented(blks, f"while ({addr}) {{")
             blks += 1
-            blk_defers.append("")
         elif op == "ifnz":
             addrs = cast(AddrSelectorArgs, args)
             addr, src_is_var, is_rel, offset = get_var_info(addrs.to_bfhla(), current_addr, scopes)
 
+            current_addr = offset
+            blk_defers.append((current_addr, f"{addr} = 0;"))
+
             print_indented(blks, f"if ({addr}) {{")
             blks += 1
-            blk_defers.append(f"{addr} = 0;")
         elif op == "predec_for":
             addrs = cast(AddrSelectorArgs, args)
             addr, src_is_var, is_rel, offset = get_var_info(addrs.to_bfhla(), current_addr, scopes)
 
+            current_addr = offset
+            blk_defers.append((current_addr, ""))
+
             print_indented(blks, f"for (; {addr}; --{addr}) {{")
             blks += 1
-            blk_defers.append("")
         elif op == "postdec_for":
             addrs = cast(AddrSelectorArgs, args)
             addr, src_is_var, is_rel, offset = get_var_info(addrs.to_bfhla(), current_addr, scopes)
 
+            current_addr = offset
+            blk_defers.append((current_addr, f"--{addr};"))
+
             print_indented(blks, f"while ({addr}) {{")
             blks += 1
-            print_indented(blks, f"--{addr};")
-            blk_defers.append("")
         elif op == "balanced_loop":
+            if current_addr != -1:
+                print_indented(blks, f"p = bf_mem + {current_addr};")
+                current_addr = -1
             print_indented(blks, "while (p[0]) {")
             blks += 1
-            blk_defers.append("")
+            blk_defers.append((current_addr, ""))
         elif op == "loop":
+            if current_addr != -1:
+                print_indented(blks, f"p = bf_mem + {current_addr};")
+                current_addr = -1
             print_indented(blks, "while (*p) {")
             blks += 1
-            blk_defers.append("")
+            blk_defers.append((current_addr, ""))
         elif op == "end":
-            s = blk_defers.pop()
+            loop_addr, s = blk_defers.pop()
+            if loop_addr != -1:
+                current_addr = loop_addr
             if s != "":
                 print_indented(blks, s)
             blks -= 1

@@ -426,7 +426,7 @@ def parse_const_qualified(tkns: tuple[str|tuple, ...]) -> Expr:
     elif len(tkns) >= 2 and type(tkns[-1]) == tuple:
         base = parse_const_qualified(tkns[:-1])
         index = parse_const_expr(tkns[-1])
-        return Expr("[]", [base, index])
+        return Expr("indexed", [base, index])
 
     return parse_const_val(tkns)
 def parse_const_val(tkns: tuple[str|tuple, ...]) -> Expr:
@@ -434,7 +434,7 @@ def parse_const_val(tkns: tuple[str|tuple, ...]) -> Expr:
         tkn = cast(str, tkns[0])
         if type(tkn) == tuple:
             return parse_const_expr(tkn)
-        if tkn.isidentifier():
+        if tkn.isidentifier() or tkn == "$":
             return Expr.id_node(tkn)
         elif tkn.isnumeric():
             return Expr.num_node(tkn)
@@ -445,7 +445,7 @@ def parse_const_val(tkns: tuple[str|tuple, ...]) -> Expr:
         if type(tkns[0]) == str and tkns[0] in ["+", "-"]:
             return Expr("signed", [tkns[0], parse_const_expr(tkns[1:])])
 
-    return Expr("error", value=f"{tkns}")
+    return Expr("error", args=f"{tkns}")
 
 def parse_type(tkns: tuple[str|tuple, ...]) -> Node:
     if len(tkns) >= 1:
@@ -495,7 +495,7 @@ if __name__ == "__main__":
             print("  --buf_size=N                 set buffer size for disasm (default: 32767)")
             print("  --global_scope_name=NAME     set global scope name for disasm (default: mem)")
             print("  -h, --help                   show this help message and exit")
-            print("targets: bfhla, bf, c")
+            print("targets: assemblerfuck, bfhla, bf, c")
             sys.exit(0)
 
     src = sys.stdin.readlines()
@@ -508,7 +508,10 @@ if __name__ == "__main__":
         # print(f"# {cmd}")
         prog.append(cmd)
 
-    if target == "bfhla":
+    if target == "assemblerfuck":
+        import codegen_assemblerfuck
+        codegen_assemblerfuck.print_assemblerfuck(prog)
+    elif target == "bfhla":
         import codegen_bfhla
         codegen_bfhla.print_bfhla(prog)
     elif target == "bf":

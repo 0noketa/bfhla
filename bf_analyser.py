@@ -150,7 +150,6 @@ def optimize_bf(src: list[Tuple[str, int]]):
                     src.pop(i)
                     if i > 0:
                         i -= 1
-                # modified = True
                 continue
             else:
                 src[i] = (next[0], next[1] - it[1])
@@ -158,22 +157,21 @@ def optimize_bf(src: list[Tuple[str, int]]):
 
                 if i > 0:
                     i -= 1
-                # modified = True
                 continue
         i += 1
 
-def bfrle_to_str(src: list[Tuple[str, int]]) -> str:
+def bfir_to_bfrle(src: list[Tuple[str, int]], suffix=True) -> str:
     s = ""
     for op, n in src:
         if op == "0":
             s += "[-]"
         elif op in "+-><":
-            s += f"{op}{n}"
+            s += f"{op}{n}" if suffix else f"{n}{op}"
         else:
             s += op
     return s
 
-def bfrle_to_bf(src: list[Tuple[str, int]]) -> str:
+def bfir_to_bf(src: list[Tuple[str, int]]) -> str:
     s = ""
     for op, n in src:
         if op == "0":
@@ -186,10 +184,10 @@ def bfrle_to_bf(src: list[Tuple[str, int]]) -> str:
 
 def bfrle_highlight(src: list[Tuple[str, int]], pos: int, surrounding_steps=8, highlight: Optional[Callable[[str], str]]=None) -> str:
     n = surrounding_steps
-    s = bfrle_to_str(src[:pos][-n:])
+    s = bfir_to_bfrle(src[:pos][-n:])
     if highlight is not None:
-        s += highlight(bfrle_to_str(src[pos:pos + 1]))
+        s += highlight(bfir_to_bfrle(src[pos:pos + 1]))
     else:
-        s += f" *{bfrle_to_str(src[pos:pos + 1])}* "
-    s += bfrle_to_str(src[pos + 1:][:n])
+        s += f" *{bfir_to_bfrle(src[pos:pos + 1])}* "
+    s += bfir_to_bfrle(src[pos + 1:][:n])
     return s
