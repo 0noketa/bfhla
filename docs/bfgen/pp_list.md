@@ -5,19 +5,21 @@
 | name                                    | var | macro | block mac | mac in mac | param | comment | others        | include |
 | :-------------------------------------- | :-- | :---- | :-------- | :--------- | :---- | :------ | :------------ | :------ |
 | [hagyu-aya/bf-generator][b0]            | no  | no    | no        | no         | no    | no      | dup           | no      |
-| [BFpp][b1]                              | no  | yes   | yes       | yes        | yes   | yes     | block_dup     | yes     |
-| [cornwarecjp/brainfuck-macros][b2]      | ?   | ?     | ?         | ?          | ?     | ?       | ?             | ?       |
-| [Jorgeromeu/brainfuck-preprocessor][b3] | ?   | ?     | ?         | ?          | ?     | ?       | ?             | ?       |
-| [Pi-Man/Brainfuck-Preprocessor][b4]     | ?   | ?     | ?         | ?          | ?     | ?       | ?             | ?       |
+| [AAlx0451/bfc/BFpp][b1]                 | no  | yes   | yes       | yes        | yes   | yes     | block_dup     | yes     |
+| [xeniagda/lldbf/bfpp][b2]               | yes | yes   | yes       | yes        | yes   | yes     | ?             | yes     |
+| [cornwarecjp/brainfuck-macros][b3]      | ?   | ?     | ?         | ?          | ?     | ?       | ?             | ?       |
+| [Jorgeromeu/brainfuck-preprocessor][b4] | ?   | ?     | ?         | ?          | ?     | ?       | ?             | ?       |
+| [Pi-Man/Brainfuck-Preprocessor][b5]     | ?   | ?     | ?         | ?          | ?     | ?       | ?             | ?       |
 | [ebf][e0]                               | ?   | ?     | ?         | ?          | ?     | ?       | ?             | ?       |
 | [AurelienMoisson/macro-brainfuck][m0]   | no  | yes   | no        | no         | no    | no      | no            | no      |
 | [vs-123/mbf][m1]                        | no  | yes   | yes       | yes        | no    | yes     | no            | no      |
 
 [b0]: #hagyu-ayabf-generator
-[b1]: #bfpp
-[b2]: #cornwarecjpbrainfuck-macros
-[b3]: #jorgeromeubrainfuck-preprocessor  
-[b4]: #pi-manbrainfuck-preprocessor
+[b1]: #aalx0451bfcbfpp
+[b2]: #xeniagdalldbfbfpp
+[b3]: #cornwarecjpbrainfuck-macros
+[b4]: #jorgeromeubrainfuck-preprocessor  
+[b5]: #pi-manbrainfuck-preprocessor
 [e0]: #ebf
 [m0]: #aurelienmoissonmacro-brainfuck
 [m1]: #vs-123mbf
@@ -30,7 +32,7 @@ extended BF-RLE
 
 [url/hagyu-aya/bf-generator]: <https://github.com/hagyu-aya/bf-generator>
 
-## BFpp
+## AAlx0451/bfc/BFpp
 
 AAlx0451, public domain, 2026?, C ([source][url/bfpp])  
 
@@ -50,6 +52,12 @@ ENDFOR(1)
 ```
 
 [url/bfpp]: <https://github.com/AAlx0451/bfc>
+
+## xeniagda/lldbf/bfpp
+
+xeniagda(xenia), copyrighted, 2019, Python ([source][url/xeniagda/lldbf/bfpp])  
+
+[url/xeniagda/lldbf/bfpp]: <https://github.com/xeniagda/lldbf>
 
 ## cornwarecjp/brainfuck-macros
 
