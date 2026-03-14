@@ -211,14 +211,12 @@ def print_bf(code: list[IrStep]):
             addrs = cast(AddrSelectorArgs, args)
             n = int(addrs.addrs[0])
             if current_addr != -1:
-                print_indented(blks, bf_selector(0, current_addr))
                 current_addr = -1
             print_indented(blks, f"[{'>' * n}]")
         elif op == "skipl":
             addrs = cast(AddrSelectorArgs, args)
             n = int(addrs.addrs[0])
             if current_addr != -1:
-                print_indented(blks, bf_selector(0, current_addr))
                 current_addr = -1
             print_indented(blks, f"[{'<' * n}]")
         elif op == "bf":
@@ -301,14 +299,12 @@ def print_bf(code: list[IrStep]):
             blks += 1
         elif op == "balanced_loop":
             if current_addr != -1:
-                print_indented(blks, bf_selector(0, current_addr))
                 current_addr = -1
             print_indented(blks, "[  # balanced")
             blks += 1
             blk_defers.append((current_addr, ""))
         elif op == "loop":
             if current_addr != -1:
-                print_indented(blks, bf_selector(0, current_addr))
                 current_addr = -1
             print_indented(blks, "[")
             blks += 1
