@@ -1,7 +1,8 @@
 # list of Brainfuck-targetting compilers and assemblers
 
 this file is revised by Gemini.  
-some categorization is still incorrect.  
+some categorization are still incorrect.  
+and some column-selection are wrong.  
 Generally, disassemblers can only be written for Class 0 and 1 if the expected input is not their own output.  
 
 ## [asm class 0](./asm_list_0.md)
