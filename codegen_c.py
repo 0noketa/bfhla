@@ -4,7 +4,7 @@ from bfhla_struct import *
 import re
 
 re_raw_var = re.compile(r"^([0-9]+|[a-zA-Z$_][a-zA-Z0-9$_]*)(?:\[([+\\-]|)(\d+)\]|)")
-re_bfrle_step = re.compile(r"^(.{1})(\d*)(|.*)$")
+
 
 def print_indented(i: int, s: str):
     print(codegen.indent_unit * i + s)
@@ -157,57 +157,56 @@ def print_c(code: list[IrStep]):
                 current_addr = -1
             print_indented(blks, f"while (*p) p -= {addrs.to_bfhla()};")
         elif op == "bf":
-            inline_bf = cast(BfArgs, args)
-            src = inline_bf.text
-            while len(src):
-                m = re_bfrle_step.match(src)
-                if not m:
-                    break
-                c, n, src = m.groups()
-                if n == "":
-                    n = 1
-                if c == "+":
+            src = cast(BfArgs, args).bf
+
+            for bf_op, bf_arg in src:
+                if bf_op == "+":
                     if current_addr != -1:
-                        print_indented(blks, f"bf_mem[{current_addr}] += {n};")
+                        print_indented(blks, f"bf_mem[{current_addr}] += {bf_arg};")
                     else:
-                        print_indented(blks, f"*p += {n};")
-                elif c == "-":
+                        print_indented(blks, f"*p += {bf_arg};")
+                elif bf_op == "-":
                     if current_addr != -1:
-                        print_indented(blks, f"bf_mem[{current_addr}] -= {n};")
+                        print_indented(blks, f"bf_mem[{current_addr}] -= {bf_arg};")
                     else:
-                        print_indented(blks, f"*p -= {n};")
-                elif c == ">":
+                        print_indented(blks, f"*p -= {bf_arg};")
+                elif bf_op == ">":
                     if current_addr != -1:
-                        current_addr += n
+                        current_addr += bf_arg
                     else:
-                        print_indented(blks, f"p += {n};")
-                elif c == "<":
+                        print_indented(blks, f"p += {bf_arg};")
+                elif bf_op == "<":
                     if current_addr != -1:
-                        if current_addr - n < 0:
+                        if current_addr - bf_arg < 0:
                             print_indented(blks, f"p = bf_mem + {current_addr};")
                             current_addr = -1
                         else:
                             current_addr -= 1
                     if current_addr == -1:
-                        print_indented(blks, f"p -= {n};")
-                elif c == ",":
+                        print_indented(blks, f"p -= {bf_arg};")
+                elif bf_op == ",":
                     if current_addr != -1:
                         print_indented(blks, f"bf_mem[{current_addr}] = getchar();")
                     else:
                         print_indented(blks, f"*p = getchar();")
-                elif c == ".":
+                elif bf_op == ".":
                     if current_addr != -1:
                         print_indented(blks, f"putchar(bf_mem[{current_addr}]);")
                     else:
                         print_indented(blks, f"putchar(*p);")
-                elif c == "[":
+                elif bf_op == "0":
+                    if current_addr != -1:
+                        print_indented(blks, f"bf_mem[{current_addr}] = 0;")
+                    else:
+                        print_indented(blks, f"*p = 0;")
+                elif bf_op == "[":
                     if current_addr != -1:
                         print_indented(blks, f"p = bf_mem + {current_addr};")
                         current_addr = -1
                     print_indented(blks, "while (*p) {")
                     blks += 1
                     blk_defers.append((current_addr, ""))
-                elif c == "]":
+                elif bf_op == "]":
                     blks -= 1
                     blk_defers.pop()
                     print_indented(blks, "}")

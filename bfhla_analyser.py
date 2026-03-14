@@ -159,17 +159,20 @@ def merge_inline_bf(code: list[IrStep]) -> list[IrStep]:
 
         if op == "bf":
             j = i + 1
+            bf = cast(BfArgs, args).bf
             while j < len(code) and code[j].op == "bf":
-                bf = args.to_bfhla() + code[j].args.to_bfhla()
+                bf += cast(BfArgs, code[j].args).bf
                 if len(bf) > MAX_INLINE_BF_LENGTH:
                     break
 
-                args = BfArgs(bf)
                 j += 1
 
             i = j - 1
 
-        dst.append(IrStep(op, args))
+            dst.append(IrStep(op, BfArgs(bf)))
+        else:
+            dst.append(code[i])
+
         i += 1
 
     return dst

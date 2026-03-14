@@ -60,7 +60,7 @@ def disasm(src: list[tuple[str, int]]) -> list[IrStep]:
 
         if op in ["+", "-"]:
             if addr == -1:
-                ins = IrStep("bf", BfArgs(bfrle(op, arg)))
+                ins = IrStep("bf", BfArgs([(op, arg)]))
             else:
                 ins = IrStep("move", AssignArgs(
                     [LValue([var_name(addr)], multiplier=1 if op == "+" else -1)],
@@ -85,7 +85,6 @@ def disasm(src: list[tuple[str, int]]) -> list[IrStep]:
             if addr == -1:
                 sel = Expr("signed", ["+", Expr.num_node(str(arg))])
                 ins = IrStep("at", AddrSelectorArgs([sel]))
-                # ins = IrStep("bf", {"code": bfrle(">", arg)})
             else:
                 addr += arg
                 i += 1
@@ -101,20 +100,19 @@ def disasm(src: list[tuple[str, int]]) -> list[IrStep]:
             if addr == -1:
                 sel = Expr("signed", ["-", Expr.num_node(str(arg))])
                 ins = IrStep("at", AddrSelectorArgs([sel]))
-                # ins = IrStep("bf", BfArgs(bfrle("<", arg)))
             else:
                 i += 1
                 continue
         elif op == ",":
             if addr == -1:
-                ins = IrStep("bf", BfArgs(","))
+                ins = IrStep("bf", BfArgs([(",", 0)]))
             else:
                 ins = IrStep("input", AddrSelectorArgs([
                     Expr.id_node(var_name(addr))
                 ]))
         elif op == ".":
             if addr == -1:
-                ins = IrStep("bf", BfArgs("."))
+                ins = IrStep("bf", BfArgs([(".", 0)]))
             else:
                 ins = IrStep("print", AddrSelectorArgs([
                     Expr.id_node(var_name(addr))
@@ -171,7 +169,8 @@ def disasm(src: list[tuple[str, int]]) -> list[IrStep]:
 
 
 if __name__ == "__main__":
-    bf = [*bf_parser.load_bf(input)]
+    import sys
+    bf = [*bf_parser.load_bf(sys.stdin)]
     bf_analyser.optimize_bf(bf)
     ir = disasm(bf)
     ir = bfhla_analyser.merge_inline_bf(ir)

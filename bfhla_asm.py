@@ -2,7 +2,7 @@ from typing import cast
 import re
 import bfhla_config
 from bfhla_struct import *
-
+import bf_parser
 
 lex = re.compile("""\\s*(
     "(?:[^"]|\\")*"
@@ -120,10 +120,10 @@ def parse_line(tkns: tuple[str|tuple, ...]) -> IrStep:
         cmd = IrStep("at", AddrSelectorArgs([args]))
     elif tkns[0] == "bf":
         args = parse_const_expr(tkns[1:])
-        cmd = IrStep("bf", BfArgs(args.decoded_str()))
+        cmd = IrStep("bf", BfArgs(bf_parser.bfrle_to_bfir(args.decoded_str(), mode="suffix")))
     elif tkns[0] == "bf_at":
         args = parse_const_expr(tkns[1:])
-        cmd = IrStep("bf_at", BfArgs(args.decoded_str()))
+        cmd = IrStep("bf_at", BfArgs(bf_parser.bfrle_to_bfir(args.decoded_str(), mode="suffix")))
     elif tkns[0] == "expects":
         args = parse_const_expr(tkns[1:])
         cmd = IrStep("expects", RawArgs({"code": args}))

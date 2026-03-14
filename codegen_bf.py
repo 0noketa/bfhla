@@ -4,7 +4,7 @@ from bfhla_struct import *
 import re
 
 re_raw_var = re.compile(r"^([a-zA-Z$_][a-zA-Z0-9$_]*)(?:\[([+\\-]|)(\d+)\]|)")
-re_bfrle_step = re.compile(r"^(.{1})(\d*)(|.*)$")
+
 
 def print_indented(i: int, s: str):
     print(codegen.indent_unit * i + s)
@@ -191,7 +191,8 @@ def print_bf(code: list[IrStep]):
                 # print_indented(blks, f"{src_addr} = 0;")
         elif op in ["clear", "input", "print"]:
             addrs = cast(AddrSelectorArgs, args)
-            tmp_addr = current_addr
+            tmp_addr = current_addr if current_addr != -1 else 0
+            tmp_addr0 = tmp_addr
             s = ""
             f = {
                 "clear": "[-]",
@@ -204,7 +205,7 @@ def print_bf(code: list[IrStep]):
                 s += bf_selector(tmp_addr, offset)
                 s += f
                 tmp_addr = offset
-            s += bf_selector(tmp_addr, current_addr)
+            s += bf_selector(tmp_addr, tmp_addr0)
             print_indented(blks, f"{s}  # {op}")
         elif op == "skipr":
             addrs = cast(AddrSelectorArgs, args)
@@ -221,47 +222,39 @@ def print_bf(code: list[IrStep]):
                 current_addr = -1
             print_indented(blks, f"[{'<' * n}]")
         elif op == "bf":
-            inline_bf = cast(BfArgs, args)
-            src = inline_bf.text
+            src = cast(BfArgs, args).bf
             s = ""
-            while len(src):
-                m = re_bfrle_step.match(src)
-                if not m:
-                    break
-                c, n, src = m.groups()
-                if n == "":
-                    n = 1
-                else:
-                    n = int(n)
-
-                if c == "+":
-                    s += "+" * n
-                elif c == "-":
-                    s += "-" * n
-                elif c == ">":
+            for bf_op, bf_arg in src:
+                if bf_op == "+":
+                    s += "+" * bf_arg
+                elif bf_op == "-":
+                    s += "-" * bf_arg
+                elif bf_op == ">":
                     if current_addr != -1:
-                        current_addr += n
-                    s += ">" * n
-                elif c == "<":
+                        current_addr += bf_arg
+                    s += ">" * bf_arg
+                elif bf_op == "<":
                     if current_addr != -1:
-                        if current_addr - n < 0:
+                        if current_addr - bf_arg < 0:
                             s += bf_selector(0, current_addr)
                             current_addr = -1
                         else:
                             current_addr -= 1
-                    s += "<" * n
-                elif c == ",":
+                    s += "<" * bf_arg
+                elif bf_op == ",":
                     s += ","
-                elif c == ".":
+                elif bf_op == ".":
                     s += "."
-                elif c == "[":
+                elif bf_op == "0":
+                    s += "[-]"
+                elif bf_op == "[":
                     if current_addr != -1:
                         s += bf_selector(0, current_addr)
                         current_addr = -1
                     s += "["
                     blks += 1
                     blk_defers.append((-1, ""))
-                elif c == "]":
+                elif bf_op == "]":
                     blks -= 1
                     blk_defers.pop()
                     s += "]"
@@ -274,7 +267,7 @@ def print_bf(code: list[IrStep]):
             current_addr = offset
             blk_defers.append((current_addr, ""))
 
-            print_indented(blks, f"{s}[  # balanced")
+            print_indented(blks, f"{s}[  # balanced at var")
             blks += 1
         elif op == "ifnz":
             addrs = cast(AddrSelectorArgs, args)
@@ -308,14 +301,14 @@ def print_bf(code: list[IrStep]):
             blks += 1
         elif op == "balanced_loop":
             if current_addr != -1:
-                s += bf_selector(0, current_addr)
+                print_indented(blks, bf_selector(0, current_addr))
                 current_addr = -1
             print_indented(blks, "[  # balanced")
             blks += 1
             blk_defers.append((current_addr, ""))
         elif op == "loop":
             if current_addr != -1:
-                s += bf_selector(0, current_addr)
+                print_indented(blks, bf_selector(0, current_addr))
                 current_addr = -1
             print_indented(blks, "[")
             blks += 1

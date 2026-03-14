@@ -13,7 +13,7 @@ if __name__ == "__main__":
     target = "bf"
     w = bf_config.codegen.max_line_col
 
-    src = [*bf_parser.load_bf(input)]
+    src = [*bf_parser.load_bf(sys.stdin)]
     bf_analyser.optimize_bf(src)
 
     for arg in sys.argv[1:]:

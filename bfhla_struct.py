@@ -1,6 +1,8 @@
 
 from typing import Tuple, Union, Optional
 import bfhla_config
+import bf_parser
+import bf_analyser
 
 
 class IArgs:
@@ -216,12 +218,13 @@ class RawArgs(IArgs):
     def __repr__(self):
         return f"RawArgs({self.args})"
 class BfArgs(IArgs):
-    def __init__(self, text: str = ""):
-        self.text = text
+    def __init__(self, bf: list[tuple[str, int]]):
+        s = bf_analyser.bfir_to_bf(bf)
+        self.bf: list[tuple[str, int]] = bf_parser.bf_to_bfir(s)
     def to_bfhla(self):
-        return self.text
+        return bf_analyser.bfir_to_bfrle(self.bf)
     def __repr__(self):
-        return f"BfArgs(text={self.text!r})"
+        return f"BfArgs(text={self.to_bfhla()!r})"
 class AssignArgs(IArgs):
     def __init__(self, dsts: list[LValue], src: Expr):
         super().__init__()
