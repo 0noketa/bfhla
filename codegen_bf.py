@@ -9,7 +9,7 @@ re_raw_var = re.compile(r"^([a-zA-Z$_][a-zA-Z0-9$_]*)(?:\[([+\\-]|)(\d+)\]|)")
 def print_indented(i: int, s: str):
     print(codegen.indent_unit * i + s)
 
-def get_var_info(src: str, current_addr: int, scopes: list[dict] = None) -> Tuple[bool, bool, int]:
+def get_var_info(src: str, current_addr: int, scopes: list[dict]) -> Tuple[bool, bool, int]:
     """result: (is_var, is_relative, addr)"""
 
     name = src
