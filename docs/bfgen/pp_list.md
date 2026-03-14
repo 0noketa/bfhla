@@ -11,6 +11,7 @@
 | [Pi-Man/Brainfuck-Preprocessor][b4]     | ?   | ?     | ?         | ?          | ?     | ?       | ?             | ?       |
 | [ebf][e0]                               | ?   | ?     | ?         | ?          | ?     | ?       | ?             | ?       |
 | [AurelienMoisson/macro-brainfuck][m0]   | no  | yes   | no        | no         | no    | no      | no            | no      |
+| [vs-123/mbf][m1]                        | no  | yes   | yes       | yes        | no    | yes     | no            | no      |
 
 [b0]: #hagyu-ayabf-generator
 [b1]: #bfpp
@@ -19,6 +20,7 @@
 [b4]: #pi-manbrainfuck-preprocessor
 [e0]: #ebf
 [m0]: #aurelienmoissonmacro-brainfuck
+[m1]: #vs-123mbf
 
 ## hagyu-aya/bf-generator
 
@@ -88,3 +90,9 @@ c++++[>e<-]
 ```
 
 [url/AurelienMoisson/macro-brainfuck]: <https://github.com/AurelienMoisson/macro-brainfuck>
+
+## vs-123/mbf
+
+vs-123, AGPLv3, 2025, C ([source][url/vs-123/mbf])  
+
+[url/vs-123/mbf]: <https://github.com/vs-123/mbf>
