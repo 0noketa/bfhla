@@ -1,8 +1,8 @@
 from typing import cast
 import re
-import bfhla_config
-from bfhla_struct import *
-import bf_parser
+import config.bfhla as bfhla_config
+from bfhla.struct import *
+import bf.parser as bf_parser
 
 lex = re.compile("""\\s*(
     "(?:[^"]|\\")*"
@@ -108,7 +108,7 @@ def parse_line(tkns: tuple[str|tuple, ...]) -> IrStep:
             if i < 2 or i >= len(tkns) - 1:
                 cmd = IrStep("error", RawArgs({"src": tkns}))
             else:
-                key = tkns[1]
+                key = cast(str, tkns[1])
                 value = tkns[i + 1]
                 config[key] = value
                 cmd = IrStep("config", ConfigArgs(name=key, value=value))
@@ -509,16 +509,16 @@ if __name__ == "__main__":
         prog.append(cmd)
 
     if target == "assemblerfuck":
-        import codegen_assemblerfuck
-        codegen_assemblerfuck.print_assemblerfuck(prog)
+        import codegen.assemblerfuck
+        codegen.assemblerfuck.print_assemblerfuck(prog)
     elif target == "bfhla":
-        import codegen_bfhla
-        codegen_bfhla.print_bfhla(prog)
+        import codegen.bfhla
+        codegen.bfhla.print_bfhla(prog)
     elif target == "bf":
-        import codegen_bf
-        codegen_bf.print_bf(prog)
+        import codegen.bf
+        codegen.bf.print_bf(prog)
     elif target == "c":
-        import codegen_c
-        codegen_c.print_c(prog)
+        import codegen.c
+        codegen.c.print_c(prog)
     else:
         print(f"unknown target: {target}")

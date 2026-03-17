@@ -1,15 +1,14 @@
-from typing import cast, Tuple
-from c_config import *
-from bfhla_struct import *
+from typing import cast, Tuple, Optional
+import config.c as c_config
+from bfhla.struct import *
 import re
-
-re_raw_var = re.compile(r"^([a-zA-Z$_][a-zA-Z0-9$_]*)(?:\[([+\\-]|)(\d+)\]|)")
 
 
 def print_indented(i: int, s: str):
-    print(codegen.indent_unit * i + s)
+    print(c_config.codegen.indent_unit * i + s)
 
-def get_var_info(src: str, current_addr: int, scopes: list[dict]) -> Tuple[bool, bool, int]:
+
+def get_var_info(src: str, current_addr: int, scopes: Optional[list[dict]] = None) -> Tuple[bool, bool, int]:
     """result: (is_var, is_relative, addr)"""
 
     name = src
@@ -68,15 +67,18 @@ def get_var_info(src: str, current_addr: int, scopes: list[dict]) -> Tuple[bool,
     raise ValueError(f"Invalid selector '{src}'")
 
 
-def bf_selector(_from: int, _to: int) -> str:
-    return "<" * (_from - _to) if _from > _to else ">" * (_to - _from)
+def bf_selector(_from: int, _to: int) -> list[str]:
+    s = "RIGHT" if _from < _to else "LEFT"
+
+    return [f"MOV {s}, P"] * abs(_from - _to)
 
 
-def print_bf(code: list[IrStep]):
+def bfir_to_assemblerfuck(code: list[IrStep]) -> list[str]:
     blks = 0
     blk_defers = []
     current_addr: int = 0
     scopes = []
+    result = []
 
     for step in code:
         op, args = step.get_pair()
@@ -103,20 +105,17 @@ def print_bf(code: list[IrStep]):
                 if sel.args[0] == "-":
                     n = -n
 
-                s = bf_selector(0, n)
-                if current_addr == -1:
-                    print_indented(blks, f"{s}")
-                else:
+                result.extend(bf_selector(0, n))
+
+                if current_addr != -1:
                     current_addr += n
-                    print_indented(blks, f"{s}  # at {current_addr}")
             elif current_addr == -1:
-                print_indented(blks, f"error  unable to access to fixed address  # at unknown")
+                result.append(f"error  unable to access to fixed address  # at unknown")
             else:
                 src_is_var, is_rel, offset = get_var_info(sel.to_bfhla(), current_addr, scopes)
-                s = bf_selector(current_addr, offset)
-                current_addr = offset
-                print_indented(blks, f"{s}  # at {current_addr}")
+                result.extend(bf_selector(current_addr, offset))
 
+                current_addr = offset
         elif op == "config":
             pass
         elif op in ["move", "copy"]:
@@ -128,41 +127,41 @@ def print_bf(code: list[IrStep]):
                 tmp_addr = offset
                 tmp_addr0 = tmp_addr
                 if current_addr != -1:
-                    s = bf_selector(current_addr, tmp_addr)
-                else:
-                    s = ""
-
+                    result.extend(bf_selector(current_addr, tmp_addr))
+    
                 if any(map(LValue.has_clear, assign_pair.dsts)):
                     for dst in assign_pair.dsts:
                         if not dst.clear:
                             continue
                         src_is_var, is_rel, offset = get_var_info(dst.addr(), current_addr, scopes)
 
-                        s += bf_selector(tmp_addr, offset)
-                        s += "[-]"
+                        result.extend(bf_selector(tmp_addr, offset))
+                        result.append("SET 0")
                         tmp_addr = offset
 
-                    s += bf_selector(tmp_addr, tmp_addr0)
+                    result.extend(bf_selector(tmp_addr, tmp_addr0))
                     tmp_addr = tmp_addr0
 
-                s += "["
+                result.append("UNTIL 0")
 
                 for dst in assign_pair.dsts:
                     src_is_var, is_rel, offset = get_var_info(dst.addr(), current_addr, scopes)
 
-                    s += bf_selector(tmp_addr, offset)
-                    s += ("+" if dst.multiplier >= 0 else "-") * abs(dst.multiplier)
+                    result.extend(bf_selector(tmp_addr, offset))
+
+                    s = ("INC " if dst.multiplier >= 0 else "DEC ") + str(abs(dst.multiplier))
+                    result.append(s)
 
                     tmp_addr = offset
 
-                s += bf_selector(tmp_addr, tmp_addr0)
+                result.extend(bf_selector(tmp_addr, tmp_addr0))
                 tmp_addr = tmp_addr0
-                s += "-]"
+
+                result.append("DEC 1")
+                result.append("END")
 
                 if current_addr != -1:
-                    s += bf_selector(tmp_addr, current_addr)
-
-                print_indented(blks, f"{s}  # move")
+                    result.extend(bf_selector(tmp_addr, current_addr))
             else:
                 src_num = int(assign_pair.src)
                 if current_addr != -1:
@@ -174,156 +173,200 @@ def print_bf(code: list[IrStep]):
                 for dst in assign_pair.dsts:
                     src_is_var, is_rel, offset = get_var_info(dst.addr(), current_addr, scopes)
 
-                    s += bf_selector(tmp_addr, offset)
+                    result.extend(bf_selector(tmp_addr, offset))
                     tmp_addr = offset
 
-                    if dst.has_clear():
-                        s += "[-]"
-                    s += ("+" if dst.multiplier >= 0 else "-") * abs(dst.multiplier) * src_num
+                    if dst.has_clear() and dst.multiplier > 0:
+                        result.append(f"SET {dst.multiplier}")
+                    else:
+                        if dst.has_clear():
+                            result.append("SET 0")
+
+                        s = ("INC " if dst.multiplier >= 0 else "DEC ") + str(abs(dst.multiplier))
+                        result.append(s)
 
                 if current_addr != -1:
-                    s += bf_selector(tmp_addr, current_addr)
-
-                print_indented(blks, f"{s}  # const")
+                    result.extend(bf_selector(tmp_addr, current_addr))
 
             if op == "copy" and src_is_var:
-                print_indented(blks, f"# restore copy at here")
-                # print_indented(blks, f"{src_addr} = 0;")
+                result.append(f"# restore copy at here")
+                # result.append(f"{src_addr} = 0;")
         elif op in ["clear", "input", "print"]:
             addrs = cast(AddrSelectorArgs, args)
-            tmp_addr = current_addr if current_addr != -1 else 0
-            tmp_addr0 = tmp_addr
+            tmp_addr = current_addr
             s = ""
             f = {
-                "clear": "[-]",
-                "input": ",",
-                "print": ".",
+                "clear": "SET 0",
+                "input": "MOV P, IN",
+                "print": "MOV P, OUT",
             }[op]
             for addr in addrs.addrs:
                 src_is_var, is_rel, offset = get_var_info(addr.to_bfhla(), current_addr, scopes)
 
-                s += bf_selector(tmp_addr, offset)
-                s += f
+                result.extend(bf_selector(tmp_addr, offset))
+                result.append(f)
                 tmp_addr = offset
-            s += bf_selector(tmp_addr, tmp_addr0)
-            print_indented(blks, f"{s}  # {op}")
+
+            result.extend(bf_selector(tmp_addr, current_addr))
+            # .. done (codegen_bf->_assemblerfuck)
         elif op == "skipr":
             addrs = cast(AddrSelectorArgs, args)
             n = int(addrs.addrs[0])
             if current_addr != -1:
+                result.extend(bf_selector(0, current_addr))
                 current_addr = -1
-            print_indented(blks, f"[{'>' * n}]")
+            result.append("UNTIL 0")
+            result.extend(["MOV RIGHT, P"] * n)
+            result.append("END")
         elif op == "skipl":
             addrs = cast(AddrSelectorArgs, args)
             n = int(addrs.addrs[0])
             if current_addr != -1:
+                result.extend(bf_selector(0, current_addr))
                 current_addr = -1
-            print_indented(blks, f"[{'<' * n}]")
+            result.append("UNTIL 0")
+            result.extend(["MOV LEFT, P"] * n)
+            result.append("END")
         elif op == "bf":
-            src = cast(BfArgs, args).bf
-            s = ""
+            inline_bf = cast(BfArgs, args)
+            src = inline_bf.bf
             for bf_op, bf_arg in src:
                 if bf_op == "+":
-                    s += "+" * bf_arg
+                    result.append(f"ADD {bf_arg}")
                 elif bf_op == "-":
-                    s += "-" * bf_arg
+                    result.append(f"SUB {bf_arg}")
                 elif bf_op == ">":
                     if current_addr != -1:
                         current_addr += bf_arg
-                    s += ">" * bf_arg
+                    
+                    result.extend(["MOV RIGHT, P"] * bf_arg)
                 elif bf_op == "<":
                     if current_addr != -1:
                         if current_addr - bf_arg < 0:
-                            s += bf_selector(0, current_addr)
+                            result.extend(bf_selector(0, current_addr))
                             current_addr = -1
                         else:
                             current_addr -= 1
-                    s += "<" * bf_arg
+
+                    result.extend(["MOV LEFT, P"] * bf_arg)
                 elif bf_op == ",":
-                    s += ","
+                    result.append("MOV P, IN")
                 elif bf_op == ".":
-                    s += "."
-                elif bf_op == "0":
-                    s += "[-]"
+                    result.append("MOV P, OUT")
                 elif bf_op == "[":
                     if current_addr != -1:
-                        s += bf_selector(0, current_addr)
+                        result.extend(bf_selector(0, current_addr))
                         current_addr = -1
-                    s += "["
+
+                    result.append("UNTIL 0")
                     blks += 1
-                    blk_defers.append((-1, ""))
+                    blk_defers.append((-1, []))
                 elif bf_op == "]":
+
                     blks -= 1
                     blk_defers.pop()
-                    s += "]"
-            print_indented(blks, f"{s}  # inline bf")
+                    result.append("END")
         elif op == "balanced_loop_at":
             addrs = cast(AddrSelectorArgs, args)
             src_is_var, is_rel, offset = get_var_info(addrs.to_bfhla(), current_addr, scopes)
 
-            s = bf_selector(current_addr, offset)
+            result.extend(bf_selector(current_addr, offset))
             current_addr = offset
-            blk_defers.append((current_addr, ""))
+            blk_defers.append((current_addr, []))
 
-            print_indented(blks, f"{s}[  # balanced at var")
+            result.append("UNTIL 0")
             blks += 1
         elif op == "ifnz":
             addrs = cast(AddrSelectorArgs, args)
             src_is_var, is_rel, offset = get_var_info(addrs.to_bfhla(), current_addr, scopes)
 
-            s = bf_selector(current_addr, offset)
+            result.extend(bf_selector(current_addr, offset))
             current_addr = offset
-            blk_defers.append((current_addr, "[-]"))
+            blk_defers.append((current_addr, ["SET 0"]))
 
-            print_indented(blks, f"{s}[  # if")
+            result.append("UNTIL 0")
             blks += 1
         elif op == "predec_for":
             addrs = cast(AddrSelectorArgs, args)
             src_is_var, is_rel, offset = get_var_info(addrs.to_bfhla(), current_addr, scopes)
 
-            s = bf_selector(current_addr, offset)
+            result.extend(bf_selector(current_addr, offset))
             current_addr = offset
-            blk_defers.append((current_addr, ""))
+            blk_defers.append((current_addr, []))
 
-            print_indented(blks, f"{s}[-  # for")
+            result.append("UNTIL 0")
             blks += 1
+            result.append("DEC 1")
         elif op == "postdec_for":
             addrs = cast(AddrSelectorArgs, args)
             src_is_var, is_rel, offset = get_var_info(addrs.to_bfhla(), current_addr, scopes)
 
-            s = bf_selector(current_addr, offset)
+            result.extend(bf_selector(current_addr, offset))
             current_addr = offset
-            blk_defers.append((current_addr, "-"))
+            blk_defers.append((current_addr, ["DEC 1"]))
 
-            print_indented(blks, f"{s}[  # for")
+            result.append("UNTIL 0")
             blks += 1
         elif op == "balanced_loop":
             if current_addr != -1:
+                result.extend(bf_selector(0, current_addr))
                 current_addr = -1
-            print_indented(blks, "[  # balanced")
+
+            result.append("UNTIL 0")
             blks += 1
-            blk_defers.append((current_addr, ""))
+            blk_defers.append((current_addr, []))
         elif op == "loop":
             if current_addr != -1:
+                result.extend(bf_selector(0, current_addr))
                 current_addr = -1
-            print_indented(blks, "[")
+
+            result.append("UNTIL 0")
             blks += 1
-            blk_defers.append((-1, ""))
+            blk_defers.append((-1, []))
         elif op == "end":
-            loop_addr, s = blk_defers.pop()
+            loop_addr, ss = blk_defers.pop()
             if loop_addr != -1:
-                s = bf_selector(current_addr, loop_addr) + s
+                result.extend(bf_selector(current_addr, loop_addr))
                 current_addr = loop_addr
+
+            result.extend(ss)
             blks -= 1
-            s += "]"
-            print_indented(blks, s)
+            result.append("END")
         elif op == "comment":
             raw = cast(RawArgs, args)
-            print_indented(blks, raw.args["text"])
+            result.append(raw.args["text"])
         elif op == "error":
             raw = cast(RawArgs, args)
-            print_indented(blks, f"error {raw.args['src']}")
+            result.append(f"# error {raw.args['src']}")
         else:
-            print_indented(blks, f"# unknown instruction: {op}")
+            result.append(f"# unknown instruction: {op}")
 
-    print_indented(blks, "# end")
+    return result
+
+
+def assemblerfuck_optimize(code: list[str]):
+    i = 0
+    while i + 1 < len(code):
+        if set((code[i], code[i + 1])) == set(("MOV LEFT, P", "MOV RIGHT, P")):
+            code.pop(i)
+            code.pop(i)
+            if i > 0:
+                i -= 1
+
+            continue
+
+        i += 1
+
+
+def print_assemblerfuck(code: list[IrStep]):
+    asm = bfir_to_assemblerfuck(code)
+    assemblerfuck_optimize(asm)
+    i = 0
+    for s in asm:
+        if s == "END":
+            i -= 1
+
+        print_indented(i, s)
+
+        if s == "UNTIL 0":
+            i += 1

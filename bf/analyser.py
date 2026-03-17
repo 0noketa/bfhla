@@ -135,6 +135,25 @@ def optimize_bf(src: list[Tuple[str, int]]):
             src[i] = next
             src.pop(i + 1)
             continue
+        elif it[0] in ("]", "0") and next[0] == "0":
+            src.pop(i + 1)
+            continue
+        elif it[0] in ("]", "0") and next[0] == "[":
+            print("dead loop")
+            dpt = 0
+            src.pop(i + 1)
+            while i + 1 < len(src) and (dpt > 0 or src[i + 1][0] != "]"):
+                tkn = src[i + 1][0]
+                if tkn == "[":
+                    dpt += 1
+                elif tkn == "]":
+                    dpt -= 1
+                src.pop(i + 1)
+
+            if i + 1 < len(src):
+                src.pop(i + 1)
+
+            continue
         elif i + 2 < len(src) and it[0] == "[" and next[0] == "-" and src[i + 2][0] == "]":
             src[i] = ("0", 0)
             src.pop(i + 1)

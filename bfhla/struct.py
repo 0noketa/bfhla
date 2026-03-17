@@ -1,8 +1,8 @@
 
 from typing import Tuple, Union, Optional
-import bfhla_config
-import bf_parser
-import bf_analyser
+import config.bfhla as bfhla_config
+import bf.parser
+import bf.analyser
 
 
 class IArgs:

@@ -1,7 +1,7 @@
 
 from typing import cast, Tuple
-from bfhla_config import *
-from bfhla_struct import *
+import config.bfhla as bfhla_config
+from bfhla.struct import *
 
 
 # currently, semantic analyser can detect blocks in the form of:

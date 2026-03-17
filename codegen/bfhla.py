@@ -1,11 +1,11 @@
 
 from typing import cast, Tuple
-from bfhla_config import *
-from bfhla_struct import *
+import config.bfhla as bfhla_config
+from bfhla.struct import *
 
 
 def print_indented(i: int, s: str):
-    print(codegen.indent_unit * i + s)
+    print(bfhla_config.codegen.indent_unit * i + s)
 
 
 def print_bfhla(code: list[IrStep]):
@@ -33,7 +33,7 @@ def print_bfhla(code: list[IrStep]):
             print_indented(blks, f"config {conf.name} = {conf.value}")
         elif op == "move":
             assign_pair = cast(AssignArgs, args)
-            prefix = "move " if codegen.explicit_move else ""
+            prefix = "move " if bfhla_config.codegen.explicit_move else ""
             print_indented(blks, f"{prefix}{assign_pair.to_bfhla()}")
         elif op == "copy":
             assign_pair = cast(AssignArgs, args)

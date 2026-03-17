@@ -1,13 +1,13 @@
 from typing import cast, Tuple
-from c_config import *
-from bfhla_struct import *
+import config.c as c_config
+from bfhla.struct import *
 import re
 
 re_raw_var = re.compile(r"^([0-9]+|[a-zA-Z$_][a-zA-Z0-9$_]*)(?:\[([+\\-]|)(\d+)\]|)")
 
 
 def print_indented(i: int, s: str):
-    print(codegen.indent_unit * i + s)
+    print(c_config.codegen.indent_unit * i + s)
 
 def get_var_info(src: str, current_addr: int, scopes: list[dict] = None) -> Tuple[str, bool, bool, int]:
     """result: (var_repr, is_var, is_relative, addr)"""
@@ -69,9 +69,9 @@ def print_c(code: list[IrStep]):
 
     print_indented(blks, "#include <stdio.h>")
     print_indented(blks, "#include <stdint.h>")
-    print_indented(blks, f"{codegen.cell_type} {codegen.buf_name}[{codegen.buf_size}];")
+    print_indented(blks, f"{c_config.codegen.cell_type} {c_config.codegen.buf_name}[{c_config.codegen.buf_size}];")
     print_indented(blks, "int main() {")
-    print_indented(blks, f"{codegen.cell_type} *p = {codegen.buf_name};")
+    print_indented(blks, f"{c_config.codegen.cell_type} *p = {c_config.codegen.buf_name};")
 
     for step in code:
         op, args = step.get_pair()
@@ -89,7 +89,7 @@ def print_c(code: list[IrStep]):
                 "vars": scope.var_names()
             }
             scopes.append(scope)
-            print_indented(blks, f"{codegen.cell_type} *{scope['name']} = {codegen.buf_name} + {base + offset};")
+            print_indented(blks, f"{c_config.codegen.cell_type} *{scope['name']} = {c_config.codegen.buf_name} + {base + offset};")
         elif op == "at":
             addrs = cast(AddrSelectorArgs, args)
             sel = cast(Expr, addrs.addrs[0])

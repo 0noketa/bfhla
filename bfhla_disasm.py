@@ -1,12 +1,12 @@
 
 from typing import Tuple, Generator
-import bf_analyser
-import bf_parser
-import bfhla_config
-from bfhla_struct import *
-import bfhla_analyser
-import codegen_bfhla
-import codegen_bf
+import config.bfhla as bfhla_config
+import bf.analyser as bf_analyser
+import bf.parser as bf_parser
+from bfhla.struct import *
+import bfhla.analyser as bfhla_analyser
+import codegen.bfhla as codegen_bfhla
+import codegen.bf
 
 # least version without any scope-inference
 # current version disassembles only codes with balanced loops and static addressing

@@ -1,10 +1,9 @@
 from typing import cast
 import re
-import bf_config
-from bfhla_struct import *
-import bf_config
-import bf_parser
-import bf_analyser
+import config.bf as bf_config
+from bfhla.struct import *
+import bf.parser as bf_parser
+import bf.analyser as bf_analyser
 
 
 if __name__ == "__main__":
@@ -13,17 +12,18 @@ if __name__ == "__main__":
     target = "bf"
     w = bf_config.codegen.max_line_col
 
-    src = [*bf_parser.load_bf(sys.stdin)]
-    bf_analyser.optimize_bf(src)
-
     for arg in sys.argv[1:]:
         if arg in ("-h", "-?", "/?", "/h", "-help", "--help"):
             print(f"python {sys.argv[0]} [-tTARGET] [-wWIDTH] < *.bf > (*.bf|*.bfrle)")
             print(f"  targets: bf, bfrle: suffix, bfrlep: prefix")
+            sys.exit(0)
         elif arg.startswith("-t"):
             target = arg[2:]
         elif arg.startswith("-w"):
             w = min(int(arg[2:]), 1)
+
+    src = [*bf_parser.load_bf(sys.stdin)]
+    bf_analyser.optimize_bf(src)
 
     if target == "bf":
         s = bf_analyser.bfir_to_bf(src)
