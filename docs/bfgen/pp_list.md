@@ -5,21 +5,23 @@
 | name                                    | var | macro | block mac | mac in mac | param | comment | others        | include |
 | :-------------------------------------- | :-- | :---- | :-------- | :--------- | :---- | :------ | :------------ | :------ |
 | [hagyu-aya/bf-generator][b0]            | no  | no    | no        | no         | no    | no      | dup           | no      |
-| [AAlx0451/bfc/BFpp][b1]                 | no  | yes   | yes       | yes        | yes   | yes     | block_dup     | yes     |
-| [xeniagda/lldbf/bfpp][b2]               | yes | yes   | yes       | yes        | yes   | yes     | ?             | yes     |
-| [cornwarecjp/brainfuck-macros][b3]      | ?   | ?     | ?         | ?          | ?     | ?       | ?             | ?       |
-| [Jorgeromeu/brainfuck-preprocessor][b4] | ?   | ?     | ?         | ?          | ?     | ?       | ?             | ?       |
-| [Pi-Man/Brainfuck-Preprocessor][b5]     | ?   | ?     | ?         | ?          | ?     | ?       | ?             | ?       |
+| [BFC/BFA][b1]                           | yes | no    | no        | no         | no    | yes     | selector      | no?     |
+| [AAlx0451/bfc/BFpp][b2]                 | no  | yes   | yes       | yes        | yes   | yes     | block_dup     | yes     |
+| [xeniagda/lldbf/bfpp][b3]               | yes | yes   | yes       | yes        | yes   | yes     | ?             | yes     |
+| [cornwarecjp/brainfuck-macros][b4]      | ?   | ?     | ?         | ?          | ?     | ?       | ?             | ?       |
+| [Jorgeromeu/brainfuck-preprocessor][b5] | ?   | ?     | ?         | ?          | ?     | ?       | ?             | ?       |
+| [Pi-Man/Brainfuck-Preprocessor][b6]     | ?   | ?     | ?         | ?          | ?     | ?       | ?             | ?       |
 | [ebf][e0]                               | ?   | ?     | ?         | ?          | ?     | ?       | ?             | ?       |
 | [AurelienMoisson/macro-brainfuck][m0]   | no  | yes   | no        | no         | no    | no      | no            | no      |
 | [vs-123/mbf][m1]                        | no  | yes   | yes       | yes        | no    | yes     | no            | no      |
 
 [b0]: #hagyu-ayabf-generator
-[b1]: #aalx0451bfcbfpp
-[b2]: #xeniagdalldbfbfpp
-[b3]: #cornwarecjpbrainfuck-macros
-[b4]: #jorgeromeubrainfuck-preprocessor  
-[b5]: #pi-manbrainfuck-preprocessor
+[b1]: #bfcbfa
+[b2]: #aalx0451bfcbfpp
+[b3]: #xeniagdalldbfbfpp
+[b4]: #cornwarecjpbrainfuck-macros
+[b5]: #jorgeromeubrainfuck-preprocessor  
+[b6]: #pi-manbrainfuck-preprocessor
 [e0]: #ebf
 [m0]: #aurelienmoissonmacro-brainfuck
 [m1]: #vs-123mbf
@@ -31,6 +33,26 @@ hagyu-aya, copyrighted, 2020, C++ ([source][url/hagyu-aya/bf-generator])
 extended BF-RLE  
 
 [url/hagyu-aya/bf-generator]: <https://github.com/hagyu-aya/bf-generator>
+
+## BFC/BFA
+
+Clifford Wolf, GPLv2, 2004, C  ([source][url/bfc/bfa])  
+
+intermediate language of BFC.  
+similar to pseudo-code some BF user use.  
+
+``` txt
+(x) (y) (z)  ; global var decl. this language has nestable scopes.
+<x>  ; address selector
+++++
+[-
+    <y>+
+    <z>+
+    ; at the block-end, restores pointer pointed to the var used for this block
+]
+```
+
+[url/bfc/bfa]: <http://www.clifford.at/bfcpu/>
 
 ## AAlx0451/bfc/BFpp
 

@@ -36,6 +36,6 @@ MarMareDv, CC0, 2023, ([source][url/MarMareDv/Brainfuckpp])
 
 ## 0noketa/tobf
 
-0noketa, public domain, 2020?, ([source][url/0noketa/tobf])
+0noketa, public domain, 2020, ([source][url/0noketa/tobf])
 
 [url/0noketa/tobf]: <https://github.com/0noketa/tobf/>
