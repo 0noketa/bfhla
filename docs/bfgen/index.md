@@ -21,4 +21,8 @@ Simulation required.
 
 Simulation required, and these cannot represent certain Brainfuck programs.
 
+## [preprocessor](./pp_list.md)
+
 ## [high-level language](./hll_list.md)
+
+## [code generation library](./lib_list.md)

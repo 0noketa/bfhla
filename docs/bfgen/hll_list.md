@@ -39,7 +39,6 @@
 | [kmyk/forth-to-brainfuck][fo0]               | 2015  | MIT          | kmyk(Kimiyuki Onaka)                   |
 | [VFortier/High-Level-Brainfuck][hi0]         | 2017  | Apache2      | VFortier(Vincent Fortier)              |
 | [Heathcorp/Mastermind][ma0]                  | 2023  | MIT          | Heathcorp                              |
-| [pikhq/pebble][pe0]                          | 2007  | GPLv3        | pikhq(Ada Worcester)                   |
 | [Aarav-g123/python2brainfuck][py0]           | 2026  | copyrighted  | Aarav-g123(Aarav Gupta)                |
 | [roodni/reusable-bf][re0]                    | 2021  | copyrighted  | roodni                                 |
 | [ZED.CWT/To BrainFuck Transpiler][to0]       | 2017  | spec         | ZED.CWT                                |
@@ -87,7 +86,6 @@
 | [kmyk/forth-to-brainfuck][fo0]               | yes       | ?      | no       | ?    | ?   | ?     | ?    | ?        | ?         | yes     | small?      |
 | [VFortier/High-Level-Brainfuck][hi0]         | no?       | no?    | no       | ?    | ?   | no?   | no   | no       | ?         | yes     | ?           |
 | [Heathcorp/Mastermind][ma0]                  | yes       | yes    | yes      | ?    | ?   | yes   | no   | no       | ?         | yes     | ?           |
-| [pikhq/pebble][pe0]                          | yes       | no?    | ?        | ?    | ?   | yes   | no   | no       | ?         | yes     | ?           |
 | [Aarav-g123/python2brainfuck][py0]           | ?         | ?      | ?        | ?    | ?   | ?     | ?    | ?        | ?         | yes     | ?           |
 | [roodni/reusable-bf][re0]                    | ?         | ?      | ?        | ?    | ?   | yes   | no   | no       | ?         | yes     | small?      |
 | [ZED.CWT/To BrainFuck Transpiler][to0]       | ?         | yes    | ?        | ?    | ?   | yes   | no   | no       | ?         | yes     | undefined   |
@@ -129,7 +127,6 @@
 [fo0]: <https://github.com/kmyk/forth-to-brainfuck>
 [hi0]: <https://github.com/VFortier/High-Level-Brainfuck>
 [ma0]: <https://github.com/Heathcorp/Mastermind>
-[pe0]: <https://github.com/pikhq/pebble>
 [py0]: <https://github.com/Aarav-g123/python2brainfuck>
 [re0]: <https://github.com/roodni/reusable-bf>
 [to0]: <https://www.codewars.com/kata/59f9cad032b8b91e12000035>

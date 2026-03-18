@@ -1,32 +1,47 @@
 # list of Brainfuck assembly languages (class 0)
 
-no simulation required.  
+no simulation required. all structures/objects are optional and/or with consistent ABI.  
+
+## information
+
+| name                                     | since | license       | language | author                |
+| :--------------------------------------- | :---- | :------------ | :------- | :-------------------- |
+| [AssemblerFuck][as0]                     | 2016  | public domain | spec     | Sesshomariu           |
+| [Stalis/bf-asm][bf0]                     | 2018? | Apache        | Ruby     | Stalis                |
+| [ethandhunt/bfa][bf1]                    | 2022  | copyrighted   | Python   | ethandhunt            |
+| [piirios/BFIL][bf2]                      | 2023  | copyrighted   | Rust     | piirios               |
+| [nthnn/Brainfuck Assembly Language][br0] | 2024  | MIT           | C++      | nthnn(Nathanne Isip)  |
+| [Geometer1729/BrainFucktion][br1]        | 2019  | copyrighted   | Haskell  | Geometer1729          |
+| [snuggyizme/Cortex][co0]                 | 2026  | MIT           | Python   | snuggyizme            |
+| [pikhq/pebble][pe0]                      | 2007  | GPLv3         | Tcl      | pikhq(Ada Worcester)  |
+| [MrRare2/readable_brainfuck][re0]        | 2024  | public domain | spec     | MrRare2               |
+| [MrRare2/readable_brainfuck][re0]        | 2024  | GPLv3         | Python   | MrRare2               |
 
 ## functionality
 
-| name                                    | inline bf | var | macro | abs addr | rel addr | comment | macro instruction              | builtin struct |
-| :-------------------------------------- | :-------- | :-- | :---- | :------- | :------- | :------ | :----------------------------- | :------------- |
-| [AssemblerFuck][a0]                     | no        | no  | no    | no       | yes      | no      | no                             | no             |
-| [Stalis/bf-asm][b0]                     | yes       | no  | no    | ?        | yes      | yes     | copy?                          | no             |
-| [ethandhunt/bfa][b1]                    | ?         | ?   | ?     | ?        | ?        | ?       | ?                              | ?              |
-| [piirios/BFIL][b2]                      | ?         | no  | yes   | yes      | yes      | ?       | ?                              | ?              |
-| [nthnn/Brainfuck Assembly Language][b3] | ?         | no  | no    | ?        | yes      | no      | no                             | no             |
-| [Geometer1729/BrainFucktion][b4]        | ?         | no  | yes   | yes      | ?        | ?       | move,copy                      | no             |
-| [snuggyizme/Cortex][c0]                 | no        | yes | yes   | yes      | yes      | yes     | clear,copy,int_out(bf_ext),cmp | tmp            |
-| [MrRare2/readable_brainfuck][r0]        | ?         | ?   | ?     | ?        | ?        | ?       | ?                              | ?              |
+| name                                     | inline bf | var | macro | abs addr | rel addr | comment | temporary | constraint/contract |
+| :--------------------------------------- | :-------- | :-- | :---- | :------- | :------- | :------ | :-------- | :------------------ |
+| [AssemblerFuck][as0]                     | no        | no  | no    | no       | yes      | no      | no        | no                  |
+| [Stalis/bf-asm][bf0]                     | yes       | no  | no    | ?        | yes      | yes     | ?         | ?                   |
+| [ethandhunt/bfa][bf1]                    | ?         | ?   | ?     | ?        | ?        | ?       | ?         | ?                   |
+| [piirios/BFIL][bf2]                      | ?         | no  | yes   | yes      | yes      | ?       | ?         | ?                   |
+| [nthnn/Brainfuck Assembly Language][br0] | ?         | no  | no    | ?        | yes      | no      | ?         | ?                   |
+| [Geometer1729/BrainFucktion][br1]        | ?         | no  | yes   | yes      | ?        | ?       | ?         | ?                   |
+| [snuggyizme/Cortex][co0]                 | no        | yes | yes   | yes      | yes      | yes     | fixed?    | ?                   |
+| [pikhq/pebble][pe0]                      | yes       | yes | yes   | yes      | yes      | yes     | explicit  | yes                 |
+| [MrRare2/readable_brainfuck][re0]        | ?         | ?   | ?     | ?        | ?        | ?       | ?         | ?                   |
 
-[a0]: #assemblerfuck
-[b0]: #stalisbf-asm
-[b1]: #ethandhuntbfa
-[b2]: #piiriosbfil
-[b3]: #nthnnbrainfuck-assembly-language
-[b4]: #geometer1729brainfucktion
-[c0]: #snuggyizmecortex
-[r0]: #mrrare2readable_brainfuck
+[as0]: #assemblerfuck
+[bf0]: #stalisbf-asm
+[bf1]: <https://github.com/ethandhunt/bfa>
+[bf2]: #piiriosbfil
+[br0]: #nthnnbrainfuck-assembly-language
+[br1]: <https://github.com/Geometer1729/BrainFucktion>
+[co0]: #snuggyizmecortex
+[re0]: #mrrare2readable_brainfuck
+[pe0]: <https://github.com/pikhq/pebble>
 
-## AssemblerFuck
-
-Sesshomariu, public domain, 2016 ([spec][url/assemberfuck])  
+## [AssemblerFuck](<https://esolangs.org/wiki/AssemblerFuck>)
 
 ``` txt
 ADD 4
@@ -43,11 +58,7 @@ END
 ++++[>,.<-]
 ```
 
-[url/assemberfuck]: <https://esolangs.org/wiki/AssemblerFuck>
-
-## Stalis/bf-asm
-
-Stalis, Apache, 2018?, Ruby ([source][url/Stalis/bf-asm])  
+## [Stalis/bf-asm](<https://github.com/Stalis/bf-asm/>)
 
 ``` txt
 set 4
@@ -65,19 +76,7 @@ set 4
 ++++[>,.<-]
 ```
 
-[url/Stalis/bf-asm]: <https://github.com/Stalis/bf-asm/>
-
-## ethandhunt/bfa
-
-ethandhunt, copyrighted, 2022, Python ([source][url/ethandhunt/bfa])  
-
-[url/ethandhunt/bfa]: <https://github.com/ethandhunt/bfa>
-
-## piirios/BFIL
-
-piirios, copyrighted, 2023, Rust ([source][url/piirios/BFIL])  
-
-[url/piirios/BFIL]: <https://github.com/piirios/BFIL>
+## [piirios/BFIL](<https://github.com/piirios/BFIL>)
 
 ``` txt
 add(33)
@@ -111,9 +110,7 @@ loop {
 
 no input?  
 
-## nthnn/Brainfuck Assembly Language
-
-nthnn(Nathanne Isip), MIT, 2024, C++ ([source][url/nthnn/brainfuck-assembly])  
+## [nthnn/Brainfuck Assembly Language](<https://github.com/nthnn/brainfuck-assembly/>)
 
 ``` txt
 mov dat, 4
@@ -130,17 +127,7 @@ jump end
 ++++[>,.<-]
 ```
 
-[url/nthnn/brainfuck-assembly]: <https://github.com/nthnn/brainfuck-assembly/>
-
-## Geometer1729/BrainFucktion
-
-Geometer1729, copyrighted, 2019, Haskell ([source][url/Geometer1729/BrainFucktion])  
-
-[url/Geometer1729/BrainFucktion]: <https://github.com/Geometer1729/BrainFucktion>
-
-## snuggyizme/Cortex
-
-snuggyizme, MIT, 2026, Python ([source][url/snuggyizme/Cortex])  
+## [snuggyizme/Cortex](<https://github.com/snuggyizme/Cortex/>)
 
 ``` txt
 inc 4
@@ -178,12 +165,9 @@ end
 temporaries are placed on address <0.  
 clean output.  
 
-[url/snuggyizme/Cortex]: <https://github.com/snuggyizme/Cortex/>
+## [MrRare2/readable_brainfuck][url/MrRare2/readable_brainfuck]  
 
-## MrRare2/readable_brainfuck
-
-MrRare2, public domain, 2024 ([spec][url/MrRare2/readable_brainfuck])  
-MrRare2, GPLv3, 2024, Python ([impl][url/MrRare2/readable_brainfuck/impl])  
+[implementation][url/MrRare2/readable_brainfuck/impl]  
 
 [url/MrRare2/readable_brainfuck]: <https://esolangs.org/wiki/Readable_Brainfuck>
 [url/MrRare2/readable_brainfuck/impl]: <https://github.com/MrRare2/readable_brainfuck>
