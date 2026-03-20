@@ -195,29 +195,26 @@ if __name__ == "__main__":
 
 # how to implement switch
 #
-# stack: other, eq0, eq1, eq2, input
-# >+>+>+>+>,
+# stack: eq0, eq1, eq2, input
+# >+>+>+>,
 # [ neq0
 #     -[ neq1
 #        -[ neq2
-#             <<<<<>>>>> clear
+#             user_code_ifotherwise
+#             <<<<>>>> clear
 #         ]
 #         <[ eq2
 #             user_code_ifeq2
-#             <<<<>>>> clear
+#             <<<>>> clear
 #         ]>
 #     ]
 #     <<[ eq1
 #         user_code_ifeq1
-#         <<<>>> clear
+#         <<>> clear
 #     ]>>
 # ]
 # <<<[ eq0
 #     user_code_ifeq1
-#     <<>> clear
-# ]>>>
-# <<<<[ otherwise
-#     user_code_ifotherwise
 #     <> clear
-# ]>>>>
-# <<<<
+# ]>>>
+# <<<
