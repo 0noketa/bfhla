@@ -12,6 +12,7 @@ no simulation required. all structures/objects are optional and/or with consiste
 | [piirios/BFIL][bf2]                      | 2023  | copyrighted   | Rust     | piirios               |
 | [nthnn/Brainfuck Assembly Language][br0] | 2024  | MIT           | C++      | nthnn(Nathanne Isip)  |
 | [Geometer1729/BrainFucktion][br1]        | 2019  | copyrighted   | Haskell  | Geometer1729          |
+| [yeetree/FZCC/BrainFuzz][br2]            | 2023  | GPL           | C++      | yeetree               |
 | [snuggyizme/Cortex][co0]                 | 2026  | MIT           | Python   | snuggyizme            |
 | [pikhq/pebble][pe0]                      | 2007  | GPLv3         | Tcl      | pikhq(Ada Worcester)  |
 | [MrRare2/readable_brainfuck][re0]        | 2024  | public domain | spec     | MrRare2               |
@@ -27,6 +28,7 @@ no simulation required. all structures/objects are optional and/or with consiste
 | [piirios/BFIL][bf2]                      | ?         | no  | yes   | yes      | yes      | ?       | ?         | ?                   |
 | [nthnn/Brainfuck Assembly Language][br0] | ?         | no  | no    | ?        | yes      | no      | ?         | ?                   |
 | [Geometer1729/BrainFucktion][br1]        | ?         | no  | yes   | yes      | ?        | ?       | ?         | ?                   |
+| [yeetree/FZCC/BrainFuzz][br2]            | no        | no  | no    | no       | yes      | yes     | no        | no                  |
 | [snuggyizme/Cortex][co0]                 | no        | yes | yes   | yes      | yes      | yes     | fixed?    | ?                   |
 | [pikhq/pebble][pe0]                      | yes       | yes | yes   | yes      | yes      | yes     | explicit  | yes                 |
 | [MrRare2/readable_brainfuck][re0]        | ?         | ?   | ?     | ?        | ?        | ?       | ?         | ?                   |
@@ -37,6 +39,7 @@ no simulation required. all structures/objects are optional and/or with consiste
 [bf2]: #piiriosbfil
 [br0]: #nthnnbrainfuck-assembly-language
 [br1]: <https://github.com/Geometer1729/BrainFucktion>
+[br2]: #yeetreefzccbrainfuzz
 [co0]: #snuggyizmecortex
 [re0]: #mrrare2readable_brainfuck
 [pe0]: <https://github.com/pikhq/pebble>
@@ -127,13 +130,29 @@ jump end
 ++++[>,.<-]
 ```
 
+## [yeetree/FZCC/BrainFuzz](<https://github.com/yeetree/FZCC>)
+
+``` txt
+add, 4;
+loop;
+    left, 1;
+    in; out;
+    right, 1;
+    sub, 1;
+end;
+```
+
+``` bf
+++++[>,.<-]
+```
+
 ## [snuggyizme/Cortex](<https://github.com/snuggyizme/Cortex/>)
 
 ``` txt
 inc 4
 lop
     lft 1
-    imp
+    inp
     prt
     rgt 1
     dec 1
@@ -149,7 +168,7 @@ fly x
 set 4
 lop
     fly y
-    imp
+    inp
     prt
     fly x
     dec 1

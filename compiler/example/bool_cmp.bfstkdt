@@ -1,0 +1,23 @@
+
+println "input 2 bool values (0 or 1)"
+
+# prompt
+print ">"
+
+# input 1
+("0" ?
+    # skip rest of line
+    readln
+
+    print ">"
+    # input 2
+    ("0" ?: print "not ")
+:
+    readln
+    print ">"
+    ("0" ? print "not ")
+)
+readln
+
+# symbol as text
+println equals

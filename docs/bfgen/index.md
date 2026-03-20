@@ -25,4 +25,4 @@ Simulation required, and these cannot represent certain Brainfuck programs.
 
 ## [high-level language](./hll_list.md)
 
-## [code generation library](./lib_list.md)
+## [code-generation library](./lib_list.md)
