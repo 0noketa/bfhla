@@ -2,6 +2,7 @@
 from typing import cast, Tuple
 import config.bfhla as bfhla_config
 from bfhla.struct import *
+from bfhla.ir import *
 
 
 def print_indented(i: int, s: str):

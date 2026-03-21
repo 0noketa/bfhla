@@ -16,7 +16,7 @@ class IrScope:
         self.const_dict = self.const_dict
 
     @classmethod
-    def from_decl(cls, args: ScopeDeclArgs) -> IrScope:
+    def from_decl(cls, args: ScopeDeclArgs):
         return IrScope(args.name, args.size, args.base, args.offset, args.var_names())
 
 class IrStep:

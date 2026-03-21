@@ -4,6 +4,7 @@ import config.bfhla as bfhla_config
 import bf.analyser as bf_analyser
 import bf.parser as bf_parser
 from bfhla.struct import *
+from bfhla.ir import *
 import bfhla.analyser as bfhla_analyser
 import codegen.bfhla as codegen_bfhla
 import codegen.bf
