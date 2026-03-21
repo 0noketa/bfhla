@@ -267,5 +267,8 @@ class ScopeDeclArgs(IArgs):
         return f"ScopeDeclArgs(name={self.name}, size={self.size}, base={self.base}, offset={self.offset}, vars={self.vars})"
 
 
+class Code:
+    def __init__(self) -> None:
+        pass
 
 
