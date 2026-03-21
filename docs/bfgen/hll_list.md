@@ -26,15 +26,18 @@
 | [ImGajeed76/brainfuck_transpiler][br8]       | 2025  | GPLv3        | ImGajeed76                             |
 | [FuzzyCat444/BrainUnfuck][br12]              | 2022  | copyrighted  | FuzzyCat444                            |
 | [TrueDoctor/c--][c_0]                        | 2018  | GPLv3        | TrueDoctor                             |
+| [arthaud/c2bf][c_1]                          | 2014  | GPLv2        | arthaud                                |
 | [hsjoihs/camphorscript][ca0]                 | 2019  | BSD-3-clause | hsjoihs                                |
 | [BliepMonster/CBPP][cb0]                     | 2026  | copyrighted  | BliepMonster                           |
 | [Roddyw123/CBT-FUCK][cb1]                    | 2025  | MIT          | Roddyw123                              |
+| [pbsds/code-to-brainfuck-compiler][co0]      | 2017  | MIT          | pbsds                                  |
 | [dumkin/ExLang2Bf][ex0]                      | 2019  | copyrighted  | dumkin                                 |
 | [FBF][fb0]                                   | 2007  | GPLv3        | Asimakis Konstantinos                  |
 | [kmyk/forth-to-brainfuck][fo0]               | 2015  | MIT          | kmyk(Kimiyuki Onaka)                   |
 | [VFortier/High-Level-Brainfuck][hi0]         | 2017  | Apache2      | VFortier(Vincent Fortier)              |
 | [Heathcorp/Mastermind][ma0]                  | 2023  | MIT          | Heathcorp                              |
-| [angrykoala/mindfck][mi0]                    |       | GPLv3        | angrykoala                             |
+| [angrykoala/mindfck][mi0]                    | 2024  | GPLv3        | angrykoala                             |
+| [n4o847/nazuki][na0]                         | 2018  | spec         | n4o847                                 |
 | [Aarav-g123/python2brainfuck][py0]           | 2026  | copyrighted  | Aarav-g123(Aarav Gupta)                |
 | [roodni/reusable-bf][re0]                    | 2021  | copyrighted  | roodni                                 |
 | [Alextopher/serotonin][se0]                  | 2022  | MIT          | Alextopher                             |
@@ -100,15 +103,18 @@
 [br8]: <https://github.com/ImGajeed76/brainfuck_transpiler>
 [br12]: <https://github.com/FuzzyCat444/BrainUnfuck-to-Brainfuck-Compiler>
 [c_0]: <https://github.com/TrueDoctor/c-->
+[c_1]: <https://github.com/arthaud/c2bf>
 [ca0]: <https://hsjoihs.github.io/camphorscript/docs/camphorscript_tutorial_old.html>
 [cb0]: <https://github.com/BliepMonster/CBPP>
 [cb1]: <https://github.com/Roddyw123/CBT-FUCK>
+[co0]: <https://github.com/pbsds/code-to-brainfuck-compiler>
 [ex0]: <https://github.com/dumkin/ExLang2Bf>
 [fb0]: <https://www.inshame.com/search/label/My Progs%3A FuckBrainfuck.html>
 [fo0]: <https://github.com/kmyk/forth-to-brainfuck>
 [hi0]: <https://github.com/VFortier/High-Level-Brainfuck>
 [ma0]: <https://github.com/Heathcorp/Mastermind>
 [mi0]: <https://github.com/angrykoala/mindfck>
+[na0]: <https://github.com/n4o847/nazuki>
 [py0]: <https://github.com/Aarav-g123/python2brainfuck>
 [re0]: <https://github.com/roodni/reusable-bf>
 [se0]: <https://github.com/Alextopher/serotonin>
