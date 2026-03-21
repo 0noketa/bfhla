@@ -179,7 +179,7 @@ def parse_line(tkns: tuple[str|tuple, ...]) -> IrStep:
 
 def parse_scope_head(tkns: tuple[str|tuple, ...]) -> tuple[str, Expr, Expr, Expr]:
     name = ""
-    size = None
+    size = Expr.num_node(65536)  # Expr.id_node("__RAW_MEM__")
     base = Expr.id_node("__BASE__")
     offset = Expr.id_node("__OFFSET__")
 

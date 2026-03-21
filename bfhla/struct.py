@@ -94,7 +94,7 @@ def var_name(addr: int) -> str:
 
 class Expr:
     @classmethod
-    def num_node(cls, n: str):
+    def num_node(cls, n: int):
         return Expr("num", value=n)
     @classmethod
     def str_node(cls, s: str):
@@ -255,10 +255,10 @@ class ScopeDeclArgs(IArgs):
     def __init__(self, name: str, size: Expr, base: Expr, offset: Expr, vars: list[VarDecl]):
         super().__init__()
         self.name = name
-        self.size = size
-        self.base = base
-        self.offset = offset
-        self.vars = vars
+        self.size = size if size is not None else Expr.num_node(65536)
+        self.base = base if size is not None else Expr.num_node(0)
+        self.offset = offset if size is not None else Expr.num_node(0)
+        self.vars = vars if size is not None else []
     def is_relative(self):
         return not self.base.is_num()
     def var_names(self):
