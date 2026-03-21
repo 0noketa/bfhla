@@ -1,6 +1,7 @@
 from typing import cast, Tuple
 import config.c as c_config
 from bfhla.struct import *
+from bfhla.ir import *
 import re
 
 re_raw_var = re.compile(r"^([a-zA-Z$_][a-zA-Z0-9$_]*)(?:\[([+\\-]|)(\d+)\]|)")
@@ -78,7 +79,10 @@ def print_bf(code: list[IrStep]):
     current_addr: int = 0
     scopes = []
 
+    # while True:
     for step in code:
+        # ir.eval_step()
+        # op = ir.current_op()
         op, args = step.get_pair()
         if op == "scope":
             scope = cast(ScopeDeclArgs, args)

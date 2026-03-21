@@ -3,6 +3,7 @@ from typing import cast, Tuple
 import re
 import config.bfhla as bfhla_config
 from bfhla.struct import *
+from bfhla.ir import *
 from bfhla.lex import *
 import bf.parser as bf_parser
 
@@ -33,7 +34,7 @@ class Parser:
     def __init__(self) -> None:
         pass
 
-
+# removeme
 config = {
     "assign_method": "copy",
     "default_type": "uint",
@@ -66,7 +67,7 @@ def parse_line(tkns: tuple[str|tuple, ...]) -> IrStep:
             else:
                 key = cast(str, tkns[1])
                 value = tkns[i + 1]
-                config[key] = value
+                config[key] = value  # old
                 cmd = IrStep("config", ConfigArgs(name=key, value=value))
     elif tkns[0] == "scope":
         scope = parse_scope(tkns[1:])
@@ -169,7 +170,8 @@ def parse_scope(tkns: tuple[str|tuple, ...]) -> ScopeDeclArgs:
 
 def parse_assign(tkns: tuple[str|tuple, ...], assign_method:str=None, is_move_args: bool = False) -> IrStep:
     if assign_method is None:
-        assign_method = config["assign_method"]
+        # assign_method = "default"
+        assign_method = config["assign_method"]  # old
 
     if "=" in tkns:
         i = tkns.index("=")
@@ -283,11 +285,8 @@ def parse_var_decl(tkns: tuple[str|tuple, ...]) -> VarDecl:
         tkn = cast(str, tkns[0])
         if tkn.isidentifier():
             name = tkn
-            # if len(tkns) > 2 and tkns[1] == ":":
-            #     typ = parse_type(tkns[2:])
-            # else:
-            #     typ = Node("type", [Node("primitive", [config["default_type"]])])
-            typ = config["default_type"]
+            # typ = "default"
+            typ = config["default_type"]  # old
             return VarDecl(name, typ)
 
     return VarDecl("error", f"<error_type: {tkns}>")
@@ -408,10 +407,12 @@ def parse_type(tkns: tuple[str|tuple, ...]) -> Node:
         if type(tkns[-1]) == tuple:
             array_len = parse_const_expr(tkns[-1])
             if len(tkns) == 1:
-                elm_type = Node("primitive", [config["default_type"]])
+                # elm_type = Node("primitive", ["default"])
+                elm_type = Node("primitive", [config["default_type"]])  # old
             else:
                 elm_type = parse_type(tkns[:-1])
-            return Node("array", [array_len, elm_type, config["default_array_type"]])
+            # return Node("array", [array_len, elm_type, "default_array"])
+            return Node("array", [array_len, elm_type, config["default_array_type"]])  # old
         if type(tkns[0]) == str and tkns[0].isidentifier():
             name = tkns[0]
             return Node("primitive", [name])

@@ -12,17 +12,6 @@ class IArgs:
         return f"IArgs()"
 
 
-class IrStep:
-    def __init__(self, op: str, args: IArgs):
-        self.op = op
-        self.args = args
-
-    def get_pair(self) -> Tuple[str, IArgs]:
-        return self.op, self.args
-
-    def __repr__(self):
-        return f"Cmd({self.op}, {self.args})"
-
 class LValue:
     def __init__(self, tkns: list[str], multiplier: int = 1, clear: bool = False):
         self.tkns = tkns
@@ -265,10 +254,4 @@ class ScopeDeclArgs(IArgs):
         return [i.name for i in self.vars]
     def __repr__(self):
         return f"ScopeDeclArgs(name={self.name}, size={self.size}, base={self.base}, offset={self.offset}, vars={self.vars})"
-
-
-class Code:
-    def __init__(self) -> None:
-        pass
-
 

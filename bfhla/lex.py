@@ -61,7 +61,6 @@ class Lex:
             elif tkn == block_left:
                 return tuple(dst), i + 1
             elif tkn in (")", "]", "}"):
-                # error
                 return tuple(dst), i + 1
 
             dst.append(tkn)
